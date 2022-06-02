@@ -3,6 +3,12 @@ const app = express()
 
 app.use(express.json())
 
+//#region Middleware testing 
+app.use((req, res) => {
+    console.log(req.params)
+})
+//#endregion
+
 app.get("/", (require, response) => {
     response.send("<h1>Maybe?<h1>")
 })
