@@ -8,8 +8,8 @@
 	],
 	"main": "./src/index.js",
 	"scripts": {
-		"test": "nodemon ./src/Index.js",
-		"start": "node ./src/Index.js"
+		"test": "nodemon ./src/index.js",
+		"start": "node ./src/index.js"
 	},
 	"license": "MIT",
 	"homepage": "https://github.com/moniq-e/NodeChat#readme",
