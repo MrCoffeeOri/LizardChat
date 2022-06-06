@@ -1,4 +1,29 @@
 {
-  "users": [],
-  "groups": []
+  "users": [
+    {
+      "name": "TestUser",
+      "email": "testEmail@gmail.com",
+      "password": "test123",
+      "groups": [
+        {
+          "name": "TestGroup",
+          "id": 0.7734219032130654,
+          "isOwner": true
+        }
+      ],
+      "id": 0.8913917295435363
+    }
+  ],
+  "groups": [
+    {
+      "name": "TestGroup",
+      "owner": 0.8913917295435363,
+      "messages": [],
+      "members": [],
+      "isPrivate": false,
+      "creationDate": "Mon, 06 Jun 2022 21:37:54 GMT",
+      "id": 0.7734219032130654
+    }
+  ],
+  "authLogs": []
 }

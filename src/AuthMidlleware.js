@@ -6,6 +6,8 @@ export default async function AuthMidlleware(req, res, next) {
         let user = db.data.users.find(_user => _user.email == req.body.email && _user.password == req.body.password)
         if (!user)
             return res.status(400).json({ message: 'Invalid user' })
+        db.data.authLogs.psuh({ id: user.id, ip: req.ipv, date: new Date().toUTCString() })
+        await db.write()
         req.user = user
         next()
     } catch (error) {
