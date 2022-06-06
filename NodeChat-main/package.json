@@ -1,0 +1,40 @@
+{
+	"name": "nodechat",
+	"version": "1.0.0",
+	"description": "Simple chat made with NodeJS",
+	"authors": [
+		"Renan (MrCoffeeOri)",
+		"Monique (Moniq-e)"
+	],
+	"main": "./src/index.js",
+	"scripts": {
+		"test": "nodemon ./src/index.js",
+		"start": "node ./src/index.js"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/moniq-e/NodeChat#readme",
+	"type": "module",
+	"engines": {
+		"node": "^17.x",
+		"npm": "^8.x.x"
+	},
+	"dependencies": {
+		"cors": "^2.8.5",
+		"express": "^4.18.1",
+		"lowdb": "^3.0.0"
+	},
+	"devDependencies": {
+		"nodemon": "^2.0.16"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/moniq-e/NodeChat.git"
+	},
+	"bugs": {
+		"url": "https://github.com/moniq-e/NodeChat/issues"
+	},
+	"keywords": [
+		"Node",
+		"Chat"
+	]
+}
