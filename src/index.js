@@ -1,25 +1,17 @@
+import express, { json } from 'express'
 import cors from 'cors'
-import express, { json } from "express"
-import { Low, JSONFile } from 'lowdb'
-import { router as userRouter } from "./Routes/User.js"
+import { usersRouter } from './Routes/Users.js'
+import { userAuthRouter } from './Routes/UserAuth.js'
+import { groupsRouter } from './Routes/Groups.js'
 
-export const app = express()
-export const db = new Low(new JSONFile('database/db.json'))
-const door = process.env.DOOR || 5500
+const app = express()
+const port = process.env.DOOR || 5000
 
 app.use(json())
 app.use(cors())
-app.use("/user", userRouter)
+app.use("/users", usersRouter)
+app.use("/groups", groupsRouter)
 
-app.get("/", async (req, res) => {
-    try {
-        await db.read()
-        res.status(200).json(db.data.users) // Only testing
-    } catch (error) {
-        res.status(101)
-    }
-})
-
-app.listen(door, () => {
-    console.log(`Server running at http://localhost:${door}`)
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`)
 })
