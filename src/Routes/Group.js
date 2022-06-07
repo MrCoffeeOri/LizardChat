@@ -2,36 +2,19 @@ import { Router } from "express";
 import db from '../DB.js'
 import AuthMidlleware from "../AuthMidlleware.js";
 
-export const groupsRouter = Router()
+export const groupRouter = Router()
 
-groupsRouter.get("/query/:name", async (req, res) => {
-    try {
-        await db.read()
-        const groupsFound = db.data.groups.map(group => {
-            if (group.name.includes(req.params.name))
-                return { name: group.name, id: group.id, creationDate: group.creationDate }
-        })
-        if (groupsFound[0])
-            res.status(200).json({ message: "Success", groups: groupsFound })
-        else
-            res.status(404).json({ message: "Fail, groups not found" })
-    } catch (error) {
-        res.status(500)
-    }
-})
+groupRouter.use("/auth", AuthMidlleware)
 
-groupsRouter.route("/auth")
-    .all(AuthMidlleware)
+groupRouter.route("/auth")
     .post(async (req, res) => {
         try {
             await db.read()
-            const newGroup = { name: req.body.name, owner: req.user.id, messages: [], members: [], isPrivate: req.body.isPrivate || false, creationDate: new Date().toUTCString(), id: Math.random() }
+            const newGroup = { name: req.body.name, owner: req.user.id, isPrivate: req.body.isPrivate || false, inviteToken: new Crypto().randomUUID(), creationDate: new Date().toUTCString(), id: Math.random(), messages: [], members: [] }
             db.data.groups.push(newGroup)
             db.data.users.forEach(user => {
-                if (req.user.id == user.id) {
-                    user.groups.push({ name: newGroup.name, id: newGroup.id, isOwner: true })
-                    return
-                }
+                if (req.user.id == user.id)
+                    return user.groups.push({ name: newGroup.name, id: newGroup.id, isOwner: true })
             })
             await db.write()
             res.status(200).json({ message: `Group created`, group: newGroup })
@@ -57,4 +40,9 @@ groupsRouter.route("/auth")
         } catch (error) {
             res.status(500)
         }
+    })
+
+groupRouter.route("/auth/invite/:groupID")
+    .post((req, res) => {
+
     })

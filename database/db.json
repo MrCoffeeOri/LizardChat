@@ -4,14 +4,15 @@
       "name": "TestUser",
       "email": "testEmail@gmail.com",
       "password": "test123",
+      "id": 0.8913917295435363,
+      "isPrivate": false,
       "groups": [
         {
           "name": "TestGroup",
           "id": 0.7734219032130654,
           "isOwner": true
         }
-      ],
-      "id": 0.8913917295435363
+      ]
     }
   ],
   "groups": [
@@ -25,5 +26,6 @@
       "id": 0.7734219032130654
     }
   ],
+  "groupInvites": [],
   "authLogs": []
 }
