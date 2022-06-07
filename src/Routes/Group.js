@@ -4,9 +4,8 @@ import AuthMidlleware from "../AuthMidlleware.js";
 
 export const groupRouter = Router()
 
-groupRouter.use("/auth", AuthMidlleware)
-
-groupRouter.route("/auth")
+groupRouter.route("/auth/:email/:password")
+    .all(AuthMidlleware)
     .post(async (req, res) => {
         try {
             await db.read()
@@ -40,9 +39,4 @@ groupRouter.route("/auth")
         } catch (error) {
             res.status(500)
         }
-    })
-
-groupRouter.route("/auth/invite/:groupID")
-    .post((req, res) => {
-
     })

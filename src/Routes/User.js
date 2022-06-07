@@ -1,6 +1,6 @@
 import { Router } from "express";
 import db from '../DB.js'
-import AuthMidlleware from "../AuthMidlleware.js";
+import AuthMidlleware from "../AuthRouter.js";
 
 export const userRouter = Router()
 
@@ -21,9 +21,21 @@ userRouter
             res.status(500).json({ error })
         }
     })
+    .get("/:id", async (req, res) => {
+        try {
+            await db.read()
+            const user = db.data.users.find(user => !user.isPrivate && user.id == req.params.id)
+            if (user)
+                res.status(200).json({ message: "Success", user: { id: user.id, name: user.name } })
+            else
+                res.status(404).json({ error: "User not found or, user has a private profile" })
+        } catch (error) {
+            res.status(500).json({ error })
+        }
+    })
 
-userRouter.use(AuthMidlleware)
-    .route("/auth/:email/:password")
+userRouter.route("/auth/:email/:password")
+        .all(AuthMidlleware)
         .get((req, res) => res.status(200).json({ user: req.user }))
         .delete(async (req, res) => {
             try {
@@ -35,7 +47,7 @@ userRouter.use(AuthMidlleware)
                 res.status(500).json({ message: e })
             }
         })
-        .patch((req, res) => {
+        .patch(async (req, res) => {
             try {
                 await db.read()
                 db.data.users.forEach(user => {
