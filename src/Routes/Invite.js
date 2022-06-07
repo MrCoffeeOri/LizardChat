@@ -17,6 +17,7 @@ inviteRouter.route("/auth/:email/:password")
                 for (const user of db.data.users) {
                     if (user.id == req.body.userToInvite ) {
                         user.invites.push({ token: db.data.groups[groupIndex].inviteToken, by: req.user.id, date: new Date().toUTCString() })
+                        await db.write()
                         setTimeout(async () => {
                             await db.read()
                             db.data.groups[groupIndex].inviteToken = new Crypto().randomUUID()
