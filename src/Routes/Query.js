@@ -8,11 +8,11 @@ queryRouter.get("/:query/:name", async (req, res) => {
         await db.read()
         if (db.data[req.params.query]) {
             const query = db.data[req.params.query].map(queryData => {
-                if (group.name.includes(req.params.name) && !queryData.isPrivate)
+                if (queryData.name.includes(req.params.name) && !queryData.isPrivate)
                     return { name: queryData.name, id: queryData.id, creationDate: queryData.creationDate }
             })
-            if (query[0])
-                res.status(200).json({ message: "Success", groups: query })
+            if (query && query[0])
+                res.status(200).json({ message: "Success", query })
             else
                 res.status(404).json({ message: "Fail, query data not found" })
         } else

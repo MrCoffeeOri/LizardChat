@@ -12,7 +12,7 @@ const port = process.env.DOOR || 5000
 app.use(json())
 app.use(cors())
 app.use("/query", queryRouter)
-app.use("/users", userRouter)
+app.use("/user", userRouter)
 app.use("/group", groupRouter)
 app.use("/message", messageRouter)
 app.use("/invite", inviteRouter)

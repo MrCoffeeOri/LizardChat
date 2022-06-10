@@ -1,6 +1,6 @@
 import { Router } from "express";
 import db from '../DB.js'
-import AuthMidlleware from "../AuthRouter.js";
+import AuthMidlleware from "../AuthMidlleware.js";
 
 export const messageRouter = Router()
 
