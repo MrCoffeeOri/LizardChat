@@ -2,9 +2,9 @@ import { Router } from "express";
 import db from '../DB.js'
 import AuthMidlleware from "../AuthMidlleware.js";
 
-export const messagesRouter = Router()
+export const messageRouter = Router()
 
-messagesRouter.all("/auth/:groupID", AuthMidlleware, async (req, res, next) => {
+messageRouter.all("/:groupID/auth/:email/:password", AuthMidlleware, async (req, res, next) => {
     try {
         if (req.params.groupID && req.user.groups.some(group => group.id == req.params.groupID)) {
             let responseMessage;
