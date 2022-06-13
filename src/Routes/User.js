@@ -8,7 +8,7 @@ userRouter
     .post("/", async (req, res) => {
         try {
             await db.read()
-            if (req.body.name && req.body.name != ' ' && req.body.password && req.body.password != ' ', req.body.email && req.body.email != ' ') {
+            if (req.body.name && req.body.name != ' ' && req.body.password && req.body.password != ' ' && req.body.email && req.body.email != ' ') {
                 if (!db.data.users.some(_user => _user.email == req.body.email)) {
                     db.data.users.push({name: req.body.name, email: req.body.email, password: req.body.password, isPrivate: req.body.isPrivate || false, creationDate: new Date().toUTCString(), id: Math.random(), groups: req.body.groups || [], invites: []})
                     await db.write()
