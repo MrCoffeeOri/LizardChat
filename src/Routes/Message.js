@@ -1,36 +1,50 @@
 import { Router } from "express";
-import db from '../DB.js'
+import { db } from '../DB.js'
 import AuthMidlleware from "../AuthMidlleware.js";
 
 export const messageRouter = Router()
 
-messageRouter.all("/:groupID/auth/:email/:password", AuthMidlleware, async (req, res, next) => {
-    try {
-        if (req.params.groupID && req.user.groups.some(group => group.id == req.params.groupID)) {
-            let responseMessage;
-            await db.read()
-            for (const group of db.data.groups) {
-                if (group.id == req.params.groupID) {
-                    if (req.method.toUpperCase() == "GET")
-                        return res.status(200).json({ message: "Messages found", messages: group.messages })
-                    else if (req.method.toUpperCase() == "POST") {
-                        group.messages.push({ content: req.body.message, id: Math.random(), owner: req.user.id, date: new Date().toUTCString() })
-                        responseMessage = "Message sended"
-                        break
-                    } else if (req.method.toUpperCase() == "DELETE") {
-                        group.messages = group.messages.filter(groupMessage => groupMessage.id != req.body.id)
-                        responseMessage = "Message deleted"
-                        break
-                    } else
-                        return res.status(405)
-                }
+// TODO
+
+messageRouter.route("/auth/:email/:password")
+    .all(AuthMidlleware, (req, res, next) => {
+        if (!req.params.groupID && !req.user.groups.some(group => group.id == req.params.groupID))
+            return res.status(406).json({ message: "Missing ID or group does not exist" })
+        
+        await db.read()
+        let groupIndex;
+        const group = db.data.groups.find((group, _groupIndex) => {
+            if (group.id == req.params.groupID) {
+                groupIndex = _groupIndex
+                return true
             }
-            await db.write()
-            res.status(200).json({ message: responseMessage })
-            next()
-        }
+        })
+        if (group.members.some(member => member.id == req.user.id && member.isBlocked))
+            return res.status(400).json({ message: "User is blocked on this group" })
+
+        next()
+    })
+
+messageRouter.all("/auth/:email/:password", AuthMidlleware, async (req, res, next) => {
+    try {
+        if (!req.params.groupID && !req.user.groups.some(group => group.id == req.params.groupID))
+            return res.status(406).json({ message: "Missing ID or group does not exist" })
+
+        await db.read()
+        const group = db.data.groups.find(group => group.id == req.params.groupID)
+        if (group.members.some(member => member.id == req.user.id && member.isBlocked))
+            return res.status(400).json({ message: "User is blocked on this group" })
+
+        if (req.method == "POST")
+            group.messages.push({ content: req.body.message, id: Math.random(), owner: req.user.id, date: new Date().toUTCString() })
+        else if (req.method == "DELETE")
+            group.messages = group.messages.filter(groupMessage => groupMessage.id != req.body.id)
         else
-            return res.status(400).json({ message: "Missing ID or group does not exist" })
+            return res.status(405).json({ message: `Method ${req.method} not allowed` })
+
+        await db.write()
+        res.status(200).json({ message: `Message ${req.method == "POST" ? "sended" : "deleted"}`, messages: group.messages })
+        next()
     } catch (error) {
         res.status(500)
     }

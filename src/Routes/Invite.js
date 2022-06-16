@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db from '../DB.js'
+import { db } from '../DB.js'
 import AuthMidlleware from "../AuthMidlleware.js";
 
 export const inviteRouter = Router()
@@ -17,10 +17,11 @@ inviteRouter.route("/auth/:email/:password")
         try {
             await db.read()
             let groupIndex = FindDatasetIndex("groups", group => group.id == req.body.groupID && group.owner == req.user.id)
-            let userIndex = FindDatasetIndex("users", user => user.id == req.body.userToInvite)
-
+            
             if (!groupIndex)
                 return res.status(400).json({ error: "Group does not exist or, user is not allowed to invite" })
+                
+            let userIndex = FindDatasetIndex("users", user => user.id == req.body.userToInvite)
 
             if (!userIndex)
                 return res.status(404).json({ error: "User not found" })
