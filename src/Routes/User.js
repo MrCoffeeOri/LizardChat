@@ -9,7 +9,7 @@ userRouter
         if (!req.body.name || req.body.name == ' ' && !req.body.password || req.body.password == ' ', !req.body.email || req.body.email == ' ')
             return res.status(406).json({ message: 'User data is incorrect'})
         
-            if (users.data.some(user => user.email == req.body.email))
+        if (users.data.some(user => user.email == req.body.email))
             return res.status(406).json({ message: "Email already used" })
 
         users.data.push({name: req.body.name, email: req.body.email, password: req.body.password, isPrivate: req.body.isPrivate || false, creationDate: new Date().toUTCString(), id: Math.random(), groups: req.body.groups || [], invites: []})
