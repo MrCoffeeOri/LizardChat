@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import db from '../DB.js'
+import {  } from '../DB.js'
 
 export const queryRouter = Router()
 
@@ -8,8 +8,9 @@ queryRouter.get("/:query/:name", async (req, res) => {
         await db.read()
         if (db.data[req.params.query]) {
             const query = db.data[req.params.query].map(queryData => {
-                if (queryData.name.includes(req.params.name) && !queryData.isPrivate)
-                    return { name: queryData.name, id: queryData.id, creationDate: queryData.creationDate }
+                if (queryData.name.includes(req.params.name) && !queryData.isPrivate) {
+                    return { name: queryData.name, id: queryData.id, creationDate: queryData.creationDate, token: queryData.inviteToken }
+                }
             })
             if (query && query[0])
                 res.status(200).json({ message: "Success", query })
