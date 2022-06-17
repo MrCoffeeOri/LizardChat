@@ -8,12 +8,16 @@ async function MessageValidadtion(req, res, next) {
     if (!req.params.groupID && !req.user.groups.some(group => group.id == req.params.groupID))
         return res.status(400).json({ message: "Missing ID or group does not exist" })
     
-    const groupIndex = FindDatasetIndex(groups, group => group.id == req.params.groupID)
+    const groupIndex = FindDatasetIndex(groups.data, group => group.id == req.params.groupID)
     if (groupIndex == undefined)
         return res.status(404).json({ message: `Group with ID ${req.params.groupID} not found` })
 
-    if (!groups.data[groupIndex].members.some(member => member.id == req.user.id) || groups.data[groupIndex].members.some(member => member.id == req.user.id && member.isBlocked))
-        return res.status(401).json({ message: "User is blocked on this group or, user did not join the group" })
+    const userIndex = FindDatasetIndex(groups.data[groupIndex].members, member => member.id == req.user.id)
+    if (userIndex == undefined)
+        return res.status(403).json({ message: "User did not join the group" })
+
+    if (groups.data[groupIndex].members[userIndex].isBlocked)
+        return res.status(403).json({ message: "User is blocked on this group" })
     
     req.groupIndex = groupIndex
     next()

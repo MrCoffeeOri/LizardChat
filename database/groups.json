@@ -1,18 +1,1 @@
-[
-  {
-    "name": "Informática",
-    "owner": 0.6423496516664273,
-    "inviteToken": "H61X97Q57k69C37Y31Q36d71K75d49d78p69a37P34L52D100F82V74I86R76M87D82U95j38f53y84v82",
-    "creationDate": "Fri, 17 Jun 2022 03:30:51 GMT",
-    "id": 0.8391104675694208,
-    "messages": [],
-    "members": [
-      {
-        "name": "testUser",
-        "id": 0.6423496516664273,
-        "isOwner": true,
-        "isBlocked": false
-      }
-    ]
-  }
-]
+[]

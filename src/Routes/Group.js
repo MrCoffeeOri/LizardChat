@@ -9,7 +9,7 @@ groupRouter.post("/auth/:email/:password", AuthMidlleware, async (req, res) => {
     if (req.user.groups.length == 20)
         return res.status(403).json({ error: "User can't create more groups, length of 20 reached" })
     
-    const newGroup = { name: req.body.name, owner: req.user.id, isPrivate: req.body.isPrivate || false, inviteToken: CreateUUID(), creationDate: new Date().toUTCString(), id: Math.random(), messages: [], members: new Array({name: req.user.name, id: req.user.id, isOwner: true, isBlocked: false}) }
+    const newGroup = { name: req.body.name, owner: req.user.id, isPrivate: false, inviteToken: CreateUUID(), creationDate: new Date().toUTCString(), id: Math.random(), messages: [], members: new Array({name: req.user.name, id: req.user.id, isOwner: true, isBlocked: false}) }
     groups.data.push(newGroup)
     users.data[req.userIndex].groups.push({ name: newGroup.name, id: newGroup.id, isOwner: true })
     await groups.write()
@@ -17,8 +17,8 @@ groupRouter.post("/auth/:email/:password", AuthMidlleware, async (req, res) => {
     res.status(201).json({ message: `Group created`, group: newGroup })
 })
 
-groupRouter.patch("/join/auth/:email/:password", AuthMidlleware, (req, res) => {
-    const groupIndex = FindDatasetIndex(groups, group => group.token == req.body.token)
+groupRouter.post("/join/auth/:email/:password", AuthMidlleware, (req, res) => {
+    const groupIndex = FindDatasetIndex(groups.data, group => group.token == req.body.token)
     if (groupIndex == undefined)
         return res.status(400).json({ message: "Invalid token" })
 
@@ -29,8 +29,8 @@ groupRouter.patch("/join/auth/:email/:password", AuthMidlleware, (req, res) => {
     groups.data[groupIndex].members.push({ name: req.user.name, id: req.user.id, isBlocked: false, isOwner: false })
 })
 
-groupRouter.get("/token/auth/:email/:password", AuthMidlleware, (req, res) => {
-    const groupIndex = FindDatasetIndex(groups, group => group.id == req.body.id)
+groupRouter.get("/:id/token/auth/:email/:password", AuthMidlleware, (req, res) => {
+    const groupIndex = FindDatasetIndex(groups.data, group => group.id == req.params.id)
     if (groupIndex == undefined)
         return res.status(404).json({ message: "Group not found" })
 
@@ -48,7 +48,7 @@ groupRouter.route("/:id/auth/:email/:password")
         if (!req.params.id)
             return res.status(400).json({ message: "Group ID is missing" })
             
-        const groupIndex = FindDatasetIndex(groups, group => group.id == req.params.id)
+        const groupIndex = FindDatasetIndex(groups.data, group => group.id == req.params.id)
         if (groupIndex == undefined)
             return res.status(404).json({ message: "Group not found" })
     

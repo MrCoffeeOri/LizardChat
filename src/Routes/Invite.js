@@ -9,16 +9,19 @@ export let tokenTimers = []
 inviteRouter.route("/auth/:email/:password")
     .all(AuthMidlleware)
     .post(async (req, res) => {
-        let groupIndex = FindDatasetIndex(groups, group => group.id == req.body.groupID && group.owner == req.user.id)
+        let groupIndex = FindDatasetIndex(groups.data, group => group.id == req.body.groupID)
         if (groupIndex == undefined)
-            return res.status(400).json({ error: "Group does not exist or, user is not allowed to invite" })
+            return res.status(404).json({ error: "Group not found" })
+
+        if (groups.data[groupIndex].owner != req.user.id)
+            return res.status(403).json({ message: "User is not allowed to send an invite" })
             
-        let userToInviteIndex = FindDatasetIndex(users, user => user.id == req.body.userToInvite)
+        let userToInviteIndex = FindDatasetIndex(users.data, user => user.id == req.body.userToInvite)
         if (userToInviteIndex == undefined)
             return res.status(404).json({ error: "User not found" })
 
         if (groups.data[groupIndex].members.some(member => member.id == req.body.userToInvite))
-            return res.status(406).json({ error: "User is already a group member" })
+            return res.status(403).json({ error: "User is already a group member" })
 
         tokenTimers.push({token: groups.data[groupIndex].inviteToken, time: setTimeout(async () => {
             await users.read()
@@ -35,7 +38,7 @@ inviteRouter.route("/auth/:email/:password")
         res.status(200).json({ message: "Invite sended" })
     })
     .patch(async (req, res) => {
-        let invitedGroupIndex = FindDatasetIndex(groups, group => group.inviteToken == req.body.token)
+        let invitedGroupIndex = FindDatasetIndex(groups.data, group => group.inviteToken == req.body.token)
         if (invitedGroupIndex == undefined || !req.user.invites.some(invite => invite.token == req.body.token && invite.by != req.user.id) || req.body.accepted == null)
             return res.status(400).json({ error: "Invalid invite" })
         
@@ -52,5 +55,5 @@ inviteRouter.route("/auth/:email/:password")
         groups.data[invitedGroupIndex].inviteToken = CreateUUID()
         await groups.write()
         await users.write()
-        res.status(200).json({ message: `Invite ${req.body.accepted ? 'accepted' : 'neglected'}` })
+        res.status(200).json({ message: `Invite ${req.body.accepted ? 'accepted' : 'neglected'}`, groups: users.data[req.userIndex].groups })
     })
