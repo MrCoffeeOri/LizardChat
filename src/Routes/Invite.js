@@ -40,7 +40,7 @@ inviteRouter.route("/auth/:email/:password")
             return res.status(400).json({ error: "Invalid invite" })
         
         if (req.body.accepted) {
-            users.data[req.userIndex].groups.push({ name: groups.data[invitedGroupIndex].name, id: groups.data[invitedGroupIndex].id, isOwner: false })
+            users.data[req.userIndex].groups.push({ name: groups.data[invitedGroupIndex].name, id: groups.data[invitedGroupIndex].id, isOwner: false, isBlocked: false })
             groups.data[invitedGroupIndex].members.push({ name: req.user.name, id: req.user.id, isOwner: false, isBlocked: false })
         }
         users.data[req.userIndex].invites = users.data[req.userIndex].invites.filter(invite => invite.token != req.body.token)

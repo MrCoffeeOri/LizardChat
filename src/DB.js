@@ -9,7 +9,7 @@ export function FindDatasetIndex(dataset, callback) {
         const normal = dataset.data[i]
         const reverse = dataset.data[dataset.data.length - i - 1]
 
-        if ((!normal && !reverse) || (normal.id == reverse.id)) return undefined
+        if ((!normal && !reverse) || (dataset.data[i].length > 1 && normal.id == reverse.id)) return undefined
             
         if (callback(normal)) return i
         

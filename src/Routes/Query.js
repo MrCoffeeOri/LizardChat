@@ -3,6 +3,8 @@ import {  } from '../DB.js'
 
 export const queryRouter = Router()
 
+// TODO ===> FIX THE DATABSE REFERENCE + MODIFY THE LOGIC
+
 queryRouter.get("/:query/:name", async (req, res) => {
     try {
         await db.read()
