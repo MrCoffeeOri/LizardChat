@@ -4,8 +4,7 @@ function RandomBetween(min, max) {
     return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
-export default function CreateUUID() {
-    const length = RandomBetween(20, 30)
+export default function CreateUUID(length = RandomBetween(20, 30)) {
     let UUIDchars = ""
     for (let i = 0; i < length; i++) {
         UUIDchars += Math.floor(Math.random() * 4) % 2 == 0 ? alphabet[Math.floor(Math.random() * alphabet.length)] : alphabet[Math.floor(Math.random() * alphabet.length)].toUpperCase()

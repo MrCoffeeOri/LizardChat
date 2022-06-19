@@ -5,11 +5,25 @@ import CreateUUID from "../CreateUUID.js";
 
 export const groupRouter = Router()
 
-groupRouter.post("/auth/:email/:password", AuthMidlleware, async (req, res) => {
-    if (req.user.groups.length == 20)
+function GroupValidation(req, res, next) {
+    if (!req.params.id)
+        return res.status(400).json({ message: "Group ID is missing" })
+            
+    if (groups.data[req.params.id] == undefined)
+        return res.status(404).json({ message: "Group not found" })
+
+    if (groups.data[req.params.id].owner != req.user.id)
+        return res.status(403).json({ message: "User is not owner" })
+
+    req.groupIndex = req.params.id
+    next()
+}
+
+groupRouter.post("/:authToken", AuthMidlleware, async (req, res) => {
+    if (users.data[req.userIndex].groups.length == 20)
         return res.status(403).json({ error: "User can't create more groups, length of 20 reached" })
     
-    const newGroup = { name: req.body.name, owner: req.user.id, isPrivate: false, inviteToken: CreateUUID(), creationDate: new Date().toUTCString(), id: Math.random(), messages: [], members: new Array({name: req.user.name, id: req.user.id, isOwner: true, isBlocked: false}) }
+    const newGroup = { name: req.body.name, owner: req.userIndex, isPrivate: false, inviteToken: CreateUUID(), creationDate: new Date().toUTCString(), id: groups.data.length, messages: [], members: new Array({name: users.data[req.userIndex].name, id: req.userIndex, isOwner: true, isBlocked: false}) }
     groups.data.push(newGroup)
     users.data[req.userIndex].groups.push({ name: newGroup.name, id: newGroup.id, isOwner: true })
     await groups.write()
@@ -17,7 +31,7 @@ groupRouter.post("/auth/:email/:password", AuthMidlleware, async (req, res) => {
     res.status(201).json({ message: `Group created`, group: newGroup })
 })
 
-groupRouter.post("/join/auth/:email/:password", AuthMidlleware, (req, res) => {
+groupRouter.post("/join/:authToken", AuthMidlleware, (req, res) => {
     const groupIndex = FindDatasetIndex(groups.data, group => group.token == req.body.token)
     if (groupIndex == undefined)
         return res.status(400).json({ message: "Invalid token" })
@@ -29,35 +43,10 @@ groupRouter.post("/join/auth/:email/:password", AuthMidlleware, (req, res) => {
     groups.data[groupIndex].members.push({ name: req.user.name, id: req.user.id, isBlocked: false, isOwner: false })
 })
 
-groupRouter.get("/:id/token/auth/:email/:password", AuthMidlleware, (req, res) => {
-    const groupIndex = FindDatasetIndex(groups.data, group => group.id == req.params.id)
-    if (groupIndex == undefined)
-        return res.status(404).json({ message: "Group not found" })
+groupRouter.get("/:id/token/:authToken", AuthMidlleware, GroupValidation, (req, res) => res.status(200).json({ message: "Token found", token: groups.data[req.groupIndex].inviteToken }))
 
-    if (groups.data[groupIndex].isPrivate)
-        return res.status(403).json({ message: "Group is not public" })
-        
-    if (groups.data[groupIndex].member.some(member => member.id == req.user.id && member.isBlocked))
-        return res.status(403).json({ message: "User is blocked on the group" }) 
-        
-    res.status(200).json({ message: "Token found", token: groups.data[groupIndex].inviteToken })
-})
-
-groupRouter.route("/:id/auth/:email/:password")
-    .all(AuthMidlleware, async (req, res, next) => {
-        if (!req.params.id)
-            return res.status(400).json({ message: "Group ID is missing" })
-            
-        const groupIndex = FindDatasetIndex(groups.data, group => group.id == req.params.id)
-        if (groupIndex == undefined)
-            return res.status(404).json({ message: "Group not found" })
-    
-        if (groups.data[groupIndex].owner != req.user.id)
-            return res.status(403).json({ message: "User is not owner" })
-
-        req.groupIndex = groupIndex
-        next()
-    })
+groupRouter.route("/:id/:authToken")
+    .all(AuthMidlleware, GroupValidation)
     .delete(async (req, res) => {
         groups.data = groups.data.filter(group => group.id != req.params.id)
         users.data[req.userIndex].groups = users.data[req.userIndex].groups.filter(group => group.id != req.params.id)
@@ -72,6 +61,7 @@ groupRouter.route("/:id/auth/:email/:password")
         groups.data[req.groupIndex].name = req.body.name ?? groups.data[req.groupIndex].name
         if (req.body.isPrivate)
             groups.data[req.groupIndex].inviteToken = CreateUUID()
+            
         groups.data[req.groupIndex].isPrivate = req.body.isPrivate
         users.data.forEach(user => {
             user.groups.forEach(group => {
@@ -83,3 +73,4 @@ groupRouter.route("/:id/auth/:email/:password")
         await users.write()
         res.status(200).json({ message: "Group modified", group: groups.data[req.groupIndex] })
     })
+    .get((req, res) => res.status(200).json({ message: "Group found", group: groups.data[req.groupIndex] }))

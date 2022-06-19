@@ -3,6 +3,7 @@ import { Low, JSONFile } from 'lowdb'
 export const users = new Low(new JSONFile('database/users.json'))
 export const groups = new Low(new JSONFile('database/groups.json'))
 export const authLogs = new Low(new JSONFile('database/authLogs.json'))
+export const authTokens = new Low(new JSONFile('database/authTokens.json'))
 
 export function FindDatasetIndex(dataset, callback) {
     for (let i = 0; i <= dataset.length; i++) {
