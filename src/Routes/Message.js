@@ -8,42 +8,53 @@ async function MessageValidadtion(req, res, next) {
     if (!req.params.groupID)
         return res.status(400).json({ message: "Missing group ID" })
     
-    if (!groups.data[req.params.groupID])
+    const grouIndex = FindDatasetIndex(groups.data, group => group.id == req.params.groupID)
+    if (grouIndex == undefined)
         return res.status(404).json({ message: `Group with ID ${req.params.groupID} not found` })
 
-    const userIndex = FindDatasetIndex(groups.data[req.params.groupID].members, member => member.id == req.userIndex)
+    const userIndex = FindDatasetIndex(groups.data[grouIndex].members, member => member.id == req.userIndex)
     if (userIndex == undefined)
         return res.status(403).json({ message: "User did not join the group" })
 
-    if (groups.data[req.params.groupID].members[userIndex].isBlocked)
+    if (groups.data[grouIndex].members[userIndex].isBlocked)
         return res.status(403).json({ message: "User is blocked on this group" })
     
-    req.groupIndex = req.params.groupID
+    req.groupIndex = grouIndex
     next()
 }
 
 messageRouter.get("/:groupID/:limit/:authToken", AuthMidlleware, MessageValidadtion, (req, res) => {
-    const limit = req.params.limit == "All" ? groups.data[req.groupIndex].messages.length : req.params.limit
-    if (limit != "All" && req.params.limit <= 0)
-        return res.status(400).json({ message: "Invalid limit range" })
-        
-    let limitedMessages = []
-    if (groups.data[req.groupIndex].messages.length > limit) {
-        for (let i = 0; i < limit; i++)
-            limitedMessages[i] = groups.data[req.groupIndex].messages[groups.data[req.groupIndex].messages.length - limit + i]
-    }
-    res.status(200).json({ message: "Messages found", messages: limitedMessages.length > 0 ? limitedMessages : groups.data[req.groupIndex].messages })   
+    if (isNaN(req.params.limit)) 
+        return res.status(400).json({ message: "Limit is not a number" })
+
+    const messages = groups.data[req.groupIndex].messages.slice(Math.max(groups.data[req.groupIndex].messages.length - req.params.limit, 0), groups.data[req.groupIndex].messages.length) 
+    res.status(200).json({ message: "Messages found", messages })
 })
 
 messageRouter.route("/:groupID/:authToken")
     .all(AuthMidlleware, MessageValidadtion)
+    .get((req, res) => res.status(200).json({ message: "Messages found", messages: groups.data[req.groupIndex].messages }))
     .post(async (req, res) => {
-        groups.data[req.groupIndex].messages.push({ content: req.body.message, id: groups.data[req.groupIndex].messages.length, owner: req.userIndex, date: new Date().toUTCString() })
+        if (!req.body.text || req.body.text == ' ')
+            return res.status(400).json({ message: "Message content is empty" })
+            
+        groups.data[req.groupIndex].messages.push({ text: req.body.text, id: groups.data[req.groupIndex].messages.length, owner: req.userIndex, date: new Date().toUTCString() })
         await groups.write()
         res.status(200).json({ message: `Message sended`, messages: groups.data[req.groupIndex].messages })
     })
     .delete(async (req, res) => {
-        groups.data[req.groupIndex].messages = groups.data[req.groupIndex].messages.filter(groupMessage => groupMessage.owner == req.user.id && groupMessage.id != req.body.id)
+        if (req.body.id == undefined || req.body.id == null)
+            return res.status(400).json({ message: "ID is missing" })
+            
+        const messageIndex = FindDatasetIndex(groups.data[req.groupIndex].messages, message => message.id == req.body.id)
+        if (messageIndex == undefined)
+            return res.status(400).json({ message: `Message with ID ${req.body.id} does not exist` })
+
+        if (groups.data[req.groupIndex].messages[messageIndex].owner != req.userIndex)
+            return res.status(400).json({ message: "User is not the message owner" })
+            
+        groups.data[req.groupIndex].messages.splice(messageIndex, 1)
         await groups.write()
         res.status(200).json({ message: `Message deleted`, messages: groups.data[req.groupIndex].messages })
     })
+    

@@ -3,37 +3,28 @@ import { users, groups } from '../DB.js'
 
 export const queryRouter = Router()
 
-
-queryRouter.get("/users/:limit/:chars", async (req, res) => {
-    const query = []
-    for (let i = 0; i < req.params.limit; i++) {
-        if (!users.data[i]) break;
-        if (users.data[i].name.includes(req.params.chars)) {
-            query[i] = users.data[i].isPrivate ? 
-            { id: users.data[i].id, name: users.data[i].name, creationDate: users.data[i].creationDate } 
-            : 
-            { id: users.data[i].id, name: users.data[i].name, creationDate: users.data[i].creationDate, groups: users.data[i].groups }
-        }
-    }
-    if (!query || !query[0])
-        return res.status(404).json({ message: "Users not found" })
-    
-    const remaining = users.data.length - req.params.limit
-    res.status(200).json({ message: "Success", query, remaining: remaining > 0 ? remaining : 0 })
-}) 
-
-queryRouter.get("/groups/:limit/:name", async (req, res) => {
-    const queryDataset = req.params.query == "users" ? users : req.params.query == "groups" ? groups : undefined
-    if (!queryDataset)
+queryRouter.get("/:table/:limit/:chars", async (req, res) => {
+    req.params.chars = req.params.chars.toString()
+    const queryTable = req.params.table == "users" ? users : req.params.table == "groups" ? groups : undefined
+    if (queryTable == undefined)
         return res.status(400).json({ message: "Invalid query" })
         
-    const query = queryDataset.data.map(queryData => {
-        if (queryData.name.contains(req.params.name)) {
-            
+    if (isNaN(req.params.limit) || req.params.limit < 0)
+        return res.status(400).json({ message: "Limit is not a number or is negative" })
+
+    if (req.params.limit > queryTable.data.length)
+        req.params.limit = queryTable.data.length
+
+    let query = queryTable.data.map(item => {
+        if (item.name.indexOf(req.params.chars) != -1) {
+            return item.isPrivate ? 
+            { id: item.id, name: item.name, creationDate: item.creationDate } 
+            : 
+            { id: item.id, name: item.name, creationDate: item.creationDate, inviteToken: item.inviteToken, groups: item.groups, members: item.members }
         }
-    })
-    if (!query && !query[0])
-        res.status(404).json({ message: "Fail, query data not found" })
-        
-    res.status(200).json({ message: "Success", query })
-}) 
+    }).filter(item => item)
+    if (!query || !query[0])
+        return res.status(404).json({ message: "Query data not found" })
+    
+    res.status(200).json({ message: "Success", query: query.slice(0, req.params.limit), remaining: query.length - req.params.limit })
+})

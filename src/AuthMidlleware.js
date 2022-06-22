@@ -1,4 +1,4 @@
-import { authTokens, FindDatasetIndex } from "./DB.js"
+import { authTokens, FindDatasetIndex, users } from "./DB.js"
 
 export default async function AuthMidlleware(req, res, next) {
     if (!req.params.authToken)
@@ -8,6 +8,7 @@ export default async function AuthMidlleware(req, res, next) {
     if (auhtTokenIndex == undefined)
         return res.status(400).json({ message: "Invalid token" })
 
-    req.userIndex = authTokens.data[auhtTokenIndex].userID
+    req.auhtTokenIndex = auhtTokenIndex
+    req.userIndex = FindDatasetIndex(users.data, user => user.id == authTokens.data[auhtTokenIndex].userID)
     next()
 } 
