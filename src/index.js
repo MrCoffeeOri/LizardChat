@@ -17,11 +17,13 @@ await authTokens.read()
 
 app.use(json())
 app.use(cors())
+app.use("/", express.static('static'))
 app.use("/query", queryRouter)
 app.use("/user", userRouter)
 app.use("/group", groupRouter)
 app.use("/message", messageRouter)
 app.use("/invite", inviteRouter)
+app.use((res, _) => res.sendFile(__dirname + '/static/404.html'))
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`)

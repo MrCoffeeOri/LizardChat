@@ -1,0 +1,25 @@
+@import url(Settings.css);
+
+body {
+    width: 100%;
+    height: 100%;
+    background-image: url(../assets/background.png);
+    text-align: center;
+    color: white;
+}
+
+h1 { font-size: 3em; }
+
+p {
+    font-size: 1.5em;
+    margin-top: 1em;
+}
+
+#modal {
+    background-color: var(--second-darken-color-theme);
+    max-width: 25vw;
+    margin: auto;
+    padding: 15px;
+    border-radius: .6rem;
+    margin-top: 35vh;
+}
