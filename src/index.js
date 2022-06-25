@@ -8,7 +8,7 @@ import { inviteRouter } from './Routes/Invite.js'
 import { users, authLogs, groups, authTokens } from './DB.js'
 
 const app = express()
-const port = process.env.DOOR || 5000
+const port = process.env.PORT || 5000
 
 await users.read()
 await authLogs.read()
