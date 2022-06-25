@@ -6,7 +6,7 @@ import CreateUUID from "../CreateUUID.js";
 export const inviteRouter = Router()
 export let tokenTimers = []
 
-inviteRouter.param("authToken", )
+inviteRouter.param("authToken", AuthMidlleware)
 
 inviteRouter.route("/:authToken")
     .post(async (req, res) => {
