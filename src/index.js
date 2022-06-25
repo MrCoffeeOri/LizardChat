@@ -23,7 +23,7 @@ app.use("/user", userRouter)
 app.use("/group", groupRouter)
 app.use("/message", messageRouter)
 app.use("/invite", inviteRouter)
-app.use((res, _) => res.sendFile(__dirname + '/static/404.html'))
+app.use((res, req) => res.sendFile(__dirname + '/static/404.html'))
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`)
