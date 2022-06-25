@@ -6,8 +6,9 @@ import CreateUUID from "../CreateUUID.js";
 export const inviteRouter = Router()
 export let tokenTimers = []
 
+inviteRouter.param("authToken", )
+
 inviteRouter.route("/:authToken")
-    .all(AuthMidlleware)
     .post(async (req, res) => {
         const grouIndex = FindDatasetIndex(groups.data, group => group.id == req.body.groupID)
         if (grouIndex == undefined)

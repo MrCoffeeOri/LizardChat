@@ -20,7 +20,10 @@ function GroupValidation(req, res, next) {
     next()
 }
 
-groupRouter.post("/create/:authToken", AuthMidlleware, async (req, res) => {
+groupRouter.param("authToken", AuthMidlleware)
+groupRouter.param("id", GroupValidation)
+
+groupRouter.post("/create/:authToken", async (req, res) => {
     if (users.data[req.userIndex].groups.length == 20)
         return res.status(403).json({ error: "User can't create more groups, length of 20 reached" })
     
@@ -32,7 +35,7 @@ groupRouter.post("/create/:authToken", AuthMidlleware, async (req, res) => {
     res.status(201).json({ message: `Group created`, group: newGroup })
 })
 
-groupRouter.post("/join/:authToken", AuthMidlleware, (req, res) => {
+groupRouter.post("/join/:authToken", (req, res) => {
     const groupIndex = FindDatasetIndex(groups.data, group => group.token == req.body.token)
     if (groupIndex == undefined)
         return res.status(400).json({ message: "Invalid token" })
@@ -44,9 +47,9 @@ groupRouter.post("/join/:authToken", AuthMidlleware, (req, res) => {
     groups.data[groupIndex].members.push({ name: users.data[req.userIndex].name, id: users.data[req.userIndex].id, isBlocked: false, isOwner: false })
 })
 
-groupRouter.get("/:id/token/:authToken", AuthMidlleware, GroupValidation, (req, res) => res.status(200).json({ message: "Token found", token: groups.data[req.groupIndex].inviteToken }))
+groupRouter.get("/:id/token/:authToken", (req, res) => res.status(200).json({ message: "Token found", token: groups.data[req.groupIndex].inviteToken }))
 
-groupRouter.patch("/:id/member/:memberID/:authToken", AuthMidlleware, GroupValidation, async (req, res) => {
+groupRouter.patch("/:id/member/:memberID/:authToken", async (req, res) => {
     const userIndex = FindDatasetIndex(groups.data[req.groupIndex].members, member => member.id == req.params.memberID)
     if (userIndex == undefined)
         return res.status(404).json({ message: "User not found" })
@@ -76,7 +79,6 @@ groupRouter.patch("/:id/member/:memberID/:authToken", AuthMidlleware, GroupValid
 })
 
 groupRouter.route("/:id/:authToken")
-    .all(AuthMidlleware, GroupValidation)
     .get((req, res) => res.status(200).json({ message: "Group found", group: groups.data[req.groupIndex] }))
     .delete(async (req, res) => {
         groups.data.splice(req.groupIndex, 1)

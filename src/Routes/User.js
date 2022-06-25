@@ -4,9 +4,10 @@ import AuthMidlleware from "../AuthMidlleware.js";
 import CreateUUID from "../CreateUUID.js";
 
 export const userRouter = Router()
+userRouter.param("authToken", AuthMidlleware)
 
 userRouter
-    .post("/", async (req, res) => {
+    .post("/create", async (req, res) => {
         if (!req.body.name || req.body.name == ' ' && !req.body.password || req.body.password == ' ', !req.body.email || req.body.email == ' ')
             return res.status(400).json({ message: 'User data is incorrect'})
         
@@ -23,7 +24,7 @@ userRouter
         await authLogs.write()
         res.status(201).json({ message: "User created", user, authToken })
     })
-    .get("/:id", async (req, res) => {
+    .get("/find/:id", async (req, res) => {
         const userIndex = FindDatasetIndex(users.data, user => user.id == req.params.id)
         if (userIndex == undefined)
             return res.status(404).json({ error: "User not found" })
@@ -33,7 +34,6 @@ userRouter
 
         res.status(200).json({ message: "User found", user: { id: req.params.id, name: users.data[userIndex].name, creationDate: users.data[userIndex].creationDate, groups: users.data[userIndex].groups } })
     })
-
 
 userRouter.get("/login/:email/:password", async (req, res) => {
     const userIndex = FindDatasetIndex(users.data, user => user.email == req.params.email && user.password == req.params.password)
@@ -48,13 +48,19 @@ userRouter.get("/login/:email/:password", async (req, res) => {
     } else
         authTokens.data[authTokenIndex].token = authToken
 
-    authLogs.data.push({ userID: userIndex, ip: req.ip, method: "login", date: new Date().toUTCString() })
+    authLogs.data.push({ userID: users.data[userIndex].id, ip: req.ip, method: "login", date: new Date().toUTCString() })
     await authLogs.write()
     await authTokens.write()
     res.status(200).json({ message: authTokenIndex == undefined ? "User authenticated" : "User was authenticated in other instance", authToken, user: users.data[userIndex] })
 })
 
-userRouter.delete("/logout/:authToken", AuthMidlleware, async (req, res) => {
+userRouter.get("/login/:authToken", async (req, res) => {
+    authLogs.data.push({ userID: users.data[req.userIndex], ip: req.ip, method: "login", date: new Date().toUTCString() })
+    await authLogs.write()
+    res.status(200).json({ message: "User authenticated", user: users.data[req.userIndex] })
+})
+
+userRouter.delete("/logout/:authToken", async (req, res) => {
     authTokens.data.splice(req.auhtTokenIndex, 1)
     authLogs.data.push({ userID: req.userIndex, ip: req.ip, method: "logout", date: new Date().toUTCString() })
     await authTokens.write()
@@ -62,12 +68,11 @@ userRouter.delete("/logout/:authToken", AuthMidlleware, async (req, res) => {
     res.status(200).json({ message: "User logout" })
 })
 
-userRouter.get("/checkToken/:authToken", AuthMidlleware, (_, res) => res.status(200).json({ message: "Ok" }))
+userRouter.get("/checkToken/:authToken", (_, res) => res.status(200).json({ message: "Ok" }))
 
-userRouter.get("/invites/:authToken", AuthMidlleware, (req, res) => res.status(200).json({ message: "Invites found", invites: users.data[req.userIndex].invites }))
+userRouter.get("/invites/:authToken", (req, res) => res.status(200).json({ message: "Invites found", invites: users.data[req.userIndex].invites }))
 
 userRouter.route("/:authToken")
-    .all(AuthMidlleware)
     .get((req, res) => res.status(200).json({ user: users.data[req.userIndex] }))
     .delete(async (req, res) => {
         users.data.splice(req.userIndex, 1)

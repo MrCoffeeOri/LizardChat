@@ -23,7 +23,9 @@ async function MessageValidadtion(req, res, next) {
     next()
 }
 
-messageRouter.get("/:groupID/:limit/:authToken", AuthMidlleware, MessageValidadtion, (req, res) => {
+messageRouter.param("authToken", AuthMidlleware, MessageValidadtion)
+
+messageRouter.get("/:groupID/:limit/:authToken", (req, res) => {
     if (isNaN(req.params.limit)) 
         return res.status(400).json({ message: "Limit is not a number" })
 
@@ -32,7 +34,6 @@ messageRouter.get("/:groupID/:limit/:authToken", AuthMidlleware, MessageValidadt
 })
 
 messageRouter.route("/:groupID/:authToken")
-    .all(AuthMidlleware, MessageValidadtion)
     .get((req, res) => res.status(200).json({ message: "Messages found", messages: groups.data[req.groupIndex].messages }))
     .post(async (req, res) => {
         if (!req.body.text || req.body.text == ' ')
