@@ -6,32 +6,35 @@ import CreateUUID from "../CreateUUID.js";
 export const inviteRouter = Router()
 export let tokenTimers = []
 
+inviteRouter.param("authToken", )
+
 inviteRouter.route("/:authToken")
-    .all(AuthMidlleware)
     .post(async (req, res) => {
-        if (!groups.data[req.body.groupID])
+        const grouIndex = FindDatasetIndex(groups.data, group => group.id == req.body.groupID)
+        if (grouIndex == undefined)
             return res.status(404).json({ error: "Group not found" })
 
-        if (groups.data[req.body.groupID].owner != req.userIndex)
+        if (groups.data[grouIndex].owner != req.userIndex)
             return res.status(403).json({ message: "User is not allowed to send an invite" })
             
-        if (!users.data[req.body.userToInvite])
+        const userToInviteIndex = FindDatasetIndex(users.data, user => user.id == req.body.userToInvite)
+        if (userToInviteIndex == undefined)
             return res.status(404).json({ error: "User not found" })
 
-        if (groups.data[req.body.groupID].members.some(member => member.id == req.body.userToInvite))
+        if (groups.data[grouIndex].members.some(member => member.id == req.body.userToInvite))
             return res.status(403).json({ error: "User is already a group member" })
 
-        tokenTimers.push({token: groups.data[req.body.groupID].inviteToken, time: setTimeout(async () => {
+        tokenTimers.push({token: groups.data[grouIndex].inviteToken, time: setTimeout(async () => {
             await users.read()
             await groups.read()
-            users.data[req.body.userToInvite].invites = users.data[req.body.userToInvite].invites.filter(invite => invite.token != groups.data[req.body.groupID].inviteToken)
-            groups.data[req.body.groupID].inviteToken = CreateUUID()
+            users.data[userToInviteIndex].invites = users.data[userToInviteIndex].invites.filter(invite => invite.token != groups.data[grouIndex].inviteToken)
+            groups.data[grouIndex].inviteToken = CreateUUID()
             await users.write()
             await groups.write()
             console.log("Token changed!")
         }, 300000)}) // 5 minutes == 300000
         
-        users.data[req.body.userToInvite].invites.push({ token: groups.data[req.body.groupID].inviteToken, by: req.userIndex, date: new Date().toUTCString() })
+        users.data[userToInviteIndex].invites.push({ token: groups.data[grouIndex].inviteToken, by: users.data[req.userIndex].id, date: new Date().toUTCString() })
         await users.write()
         res.status(200).json({ message: "Invite sended" })
     })
