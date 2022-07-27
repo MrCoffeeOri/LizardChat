@@ -1,13 +1,18 @@
-@import url(./Settings.css);
-
-body {
-    background-image: url(../assets/background.png);
-    overflow-y: hidden;
-}
+@import url(./settings.css);
 
 @keyframes ShowModal {
     from { transform: translateY(-90vh); }
     to { transform: translateY(0.1vh); }
+}
+
+@keyframes ShowInfoMessage {
+    from { transform: scale(0.5); }
+    to { transform: scale(1); }
+}
+
+body {
+    background-image: url(../assets/background.png);
+    overflow-y: hidden;
 }
 
 #modal {
@@ -18,7 +23,7 @@ body {
     margin: 30vh auto;
     padding: 15px;
     border-radius: .4rem;
-    box-shadow: 3px 5px 5px rgb(128, 128, 128, 0.3);
+    box-shadow: 3px 5px 5px rgb(128, 128, 128, 0.7);
 }
 
 #modal img { width: 5vw; }
@@ -85,11 +90,11 @@ body {
 }
 
 #modal #warningMessage {
+    animation: ShowInfoMessage 300ms;
     margin-top: 15px;
     margin-bottom: 0;
     border-radius: .4rem;
     padding: 10px;
-    background-color: var(--second-darken-color-theme);
     color: white;
     font-weight: bolder;
     transition: 300ms;

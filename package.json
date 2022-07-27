@@ -8,8 +8,8 @@
 	],
 	"main": "./src/index.js",
 	"scripts": {
-		"test": "nodemon ./src/index.js",
-		"start": "node ./src/index.js"
+		"test": "nodemon ./src/Server.js",
+		"start": "node ./src/Server.js"
 	},
 	"license": "MIT",
 	"homepage": "https://github.com/moniq-e/NodeChat#readme",
@@ -20,8 +20,11 @@
 	},
 	"dependencies": {
 		"cors": "^2.8.5",
+		"dotenv": "^16.0.1",
 		"express": "^4.18.1",
-		"lowdb": "^3.0.0"
+		"lowdb": "^3.0.0",
+		"nodemailer": "^6.7.7",
+		"socket.io": "^4.5.1"
 	},
 	"devDependencies": {
 		"nodemon": "^2.0.16"

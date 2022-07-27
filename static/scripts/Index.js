@@ -1,8 +1,9 @@
 const form = document.getElementById("modalForm")
-const token = window.localStorage.getItem("token")
+const userAuth = { email: window.localStorage.getItem("email"), password: window.localStorage.getItem("password") }
 let showLogin = false
 
-if (token) fetch(`/api/user/login/${token}`).then(HanleUserAuth)
+if (userAuth.email && userAuth.password)
+    fetch(`/api/user/login/${userAuth.email}/${userAuth.password}`).then(HanleUserAuth)
 
 form.addEventListener("submit", e => {
     e.preventDefault()
@@ -11,7 +12,7 @@ form.addEventListener("submit", e => {
     const name = document.getElementById("nickNamelInp")?.value
     const rPassword = document.getElementById("repeatPasswordInp")?.value
     if (showLogin && (name == ' ' || rPassword != password))
-        return ShowWarning("Invalid nickname or password")
+        return ShowInfoMessage("Invalid nickname or password", true)
 
     showLogin ? 
         fetch(`/api/user/create`, {
@@ -21,6 +22,8 @@ form.addEventListener("submit", e => {
         }).then(HanleUserAuth)
     : 
         fetch(`/api/user/login/${email}/${password}`).then(HanleUserAuth)
+    window.localStorage.setItem("email", email)
+    window.localStorage.setItem("password", password)
 })
 
 document.getElementById("modal").children[2].addEventListener("click", e => {
@@ -44,18 +47,19 @@ document.getElementById("modal").children[2].addEventListener("click", e => {
 
 function HanleUserAuth(e) {
     e.json().then(_e => {
-        if (!e.ok)
-            return ShowWarning(_e.message)
+        if (!e.ok) {
+            window.localStorage.clear()
+            return ShowInfoMessage(_e.message, true)
+        }
             
-        window.localStorage.setItem("token", _e.authToken)
-        window.localStorage.setItem("user", JSON.stringify(_e.user))
-        ShowWarning(_e.message)
-        setTimeout(() => window.location.href = "/User.html", 1000)
+        ShowInfoMessage(_e.message)
+        setTimeout(() => window.location.href = `/home.html?authToken=${_e.authToken}&userID=${_e.userID}`, 1000)
     })
 }
 
-function ShowWarning(message) {
+function ShowInfoMessage(message, isError = false) {
     const messageWarning = document.getElementById("warningMessage")
-    messageWarning.innerText = message
     messageWarning.style.display = "block"
+    messageWarning.innerText = message
+    messageWarning.style.backgroundColor = isError ? "red" : "var(--second-darken-color-theme)"
 }

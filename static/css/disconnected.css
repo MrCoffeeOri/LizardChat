@@ -1,0 +1,26 @@
+@import url(./index.css);
+
+@keyframes Rotate {
+    from { transform: rotate(10deg); }
+    to { transform: rotate(-10deg); }
+}
+
+
+#modal {
+    color: white;
+    width: 30vw;
+    margin: 15vh auto;
+}
+
+#modal h1 {
+    margin-top: 0;
+}
+
+#modal #logo { width: 5vw; }
+
+#modal #sorry {
+    margin: 5px 0;
+    border: 2px solid var(--main-darken-color-theme);
+    width: 15vw;
+    animation: Rotate 1s infinite alternate;
+}
