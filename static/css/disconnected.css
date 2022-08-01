@@ -5,7 +5,6 @@
     to { transform: rotate(-10deg); }
 }
 
-
 #modal {
     color: white;
     width: 30vw;
@@ -21,6 +20,6 @@
 #modal #sorry {
     margin: 5px 0;
     border: 2px solid var(--main-darken-color-theme);
-    width: 15vw;
+    width: 13.4vw;
     animation: Rotate 1s infinite alternate;
 }

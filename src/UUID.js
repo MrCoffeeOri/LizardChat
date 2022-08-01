@@ -1,11 +1,14 @@
-import { users } from "./DB.js";
-
 const alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
 function RandomBetween(min, max) {
     return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
+/**
+ * Generates a random ID based on the given length, human friendly.
+ * @param {number} length 
+ * @returns string
+ */
 export function LengthUUID(length) {
     let UUIDchars = ''
     for (let i = 0; i < 4; i++)
@@ -14,6 +17,10 @@ export function LengthUUID(length) {
     return UUIDchars
 }
 
+/**
+ * Generates a random Token.
+ * @returns string
+ */
 export function TokenUUID() {
     let UUIDchars = ''
     for (let i = 0; i < RandomBetween(30, 80); i++) {

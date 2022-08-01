@@ -29,16 +29,34 @@ form.addEventListener("submit", e => {
 document.getElementById("modal").children[2].addEventListener("click", e => {
     form.innerHTML = showLogin ?
     `
-        <input required type="email" id="emailInp" placeholder="Email"/>
-        <input required type="password" id="passwordlInp" placeholder="Password"/>
+        <div>
+            <label for="emailInp">Email</label>
+            <input required type="email" id="emailInp" />
+        </div>
+        <div>
+            <label for="passwordInp">Password</label>
+            <input required type="password" id="passwordInp" />
+        </div>
         <button>Login</button>
     `
     :
     `
-        <input required type="email" id="emailInp" placeholder="Email">
-        <input required type="password" id="passwordInp" placeholder="Password">
-        <input required type="password" id="repeatPasswordInp" placeholder="Repeat password">
-        <input required type="text" id="nickNamelInp" placeholder="Nickname">
+        <div>
+            <label for="emailInp">Email</label>
+            <input required type="email" id="emailInp">
+        </div>
+        <div>
+            <label for="passwordInp">Password</label>
+            <input required type="password" id="passwordInp">
+        </div>
+        <div>
+            <label for="repeatPasswordInp">Repeat password</label>
+            <input required type="password" id="repeatPasswordInp">
+        </div>
+        <div>
+            <label for="nickNamelInp">Nickname</label>
+            <input required type="text" id="nickNamelInp">
+        </div>
         <button>Create account</button>
     `
     e.target.innerText = showLogin ? "Create an account" : "Back to login"
@@ -49,11 +67,12 @@ function HanleUserAuth(e) {
     e.json().then(_e => {
         if (!e.ok) {
             window.localStorage.clear()
-            return ShowInfoMessage(_e.message, true)
+            return ShowInfoMessage(_e.message || _e.error, true)
         }
-            
+        if (_e.userID && _e.authToken)
+            setTimeout(() => window.location.href = `/home.html?authToken=${_e.authToken}&userID=${_e.userID}`, 1500)
+
         ShowInfoMessage(_e.message)
-        setTimeout(() => window.location.href = `/home.html?authToken=${_e.authToken}&userID=${_e.userID}`, 1000)
     })
 }
 

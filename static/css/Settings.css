@@ -1,21 +1,49 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300&display=swap');
+@import url(./animations.css);
 
 :root {
     --main-color-theme: rgb(100, 100, 100);
     --main-lighten-color-theme: rgb(128, 128, 128);
     --main-darken-color-theme: rgb(84, 84, 84);
     --third-color-theme: rgb(41, 41, 41);
+    --third-lighten-color-theme: rgb(63, 63, 63);
     --second-color-theme: #7fb600;
     --second-darken-color-theme: #5c8300;
     --login-input-active: rgb(124, 124, 124);
 }
 
-* { font-family: 'Nunito', sans-serif; }
+* { 
+    font-family: 'Nunito', sans-serif;
+    box-sizing: border-box;
+}
 
 body { 
     margin: 0;
     width: 100vw;
     height: 100vh;
+}
+
+form button {
+    font-weight: bolder;
+    color: white;
+    background-color: var(--second-color-theme);
+    padding: 6px 10px;
+    transition: 300ms;
+    border: none;
+    display: block;
+    border-radius: .4rem;
+    transition: 200ms all;
+    cursor: pointer;
+}
+
+form button:hover {
+    transform: scale(1.1);
+    background-color: var(--second-darken-color-theme);
+}
+
+input, textarea { 
+    outline: none; 
+    transition: 350ms;
 }
 
 a { text-decoration: none; }

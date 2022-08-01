@@ -1,0 +1,9 @@
+@keyframes ShowModal {
+    from { transform: translateY(-90vh); }
+    to { transform: translateY(0.1vh); }
+}
+
+@keyframes ShowInfoMessage {
+    from { transform: scale(0.5); }
+    to { transform: scale(1); }
+}
