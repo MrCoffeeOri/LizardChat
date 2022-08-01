@@ -43,7 +43,7 @@ userRouter
                     delete cfmTokens.data[confirmationToken]
                     await cfmTokens.write()
                 }
-            }, 7200000); // 2 hours
+            }, 720000); // 2 hours
             res.status(200).json({ message: "Confirmation email sent to " + req.body.email });
         })
     })
