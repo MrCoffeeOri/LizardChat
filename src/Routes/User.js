@@ -4,18 +4,6 @@ import { logs, users, cfmTokens, FindIndex } from '../DB.js'
 import { LengthUUID, TokenUUID } from "../UUID.js"
 
 export const userRouter = Router()
-const transport = createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.PASSWORD_USER
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
-})
 
 userRouter
     .post("/create", async (req, res) => {
@@ -26,7 +14,18 @@ userRouter
             return res.status(403).json({ error: "Email already used" })
 
         const confirmationToken = TokenUUID()
-        transport.sendMail({
+        createTransport({
+            host: process.env.EMAIL_HOST,
+            port: process.env.EMAIL_PORT,
+            secure: false,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.PASSWORD_USER
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        }).sendMail({
             from: process.env.EMAIL_USER,
             to: req.body.email,
             subject: "Confirmation email",
@@ -74,7 +73,7 @@ userRouter
         if (!cfmTokens.data[req.query.token])
             return res.status(401).json({ error: "Invalid confirmation token" })
 
-        const user = { name: cfmTokens.data[req.query.token].name, email: cfmTokens.data[req.query.token].email, password: cfmTokens.data[req.query.token].password, authToken: TokenUUID(), isPrivate: false, creationDate: new Date().toLocaleString(), id: LengthUUID(Object.keys(users.data).length), dms: [], groups: [], invites: {} }
+        const user = { name: cfmTokens.data[req.query.token].name, email: cfmTokens.data[req.query.token].email, password: cfmTokens.data[req.query.token].password, authToken: TokenUUID(), isPrivate: false, creationDate: new Date().toLocaleString(), id: LengthUUID(Object.keys(users.data).length), dms: {}, groups: {}, invites: {} }
         logs.data.push({ userID: user.id, ip: req.ip, method: "create", host: req.hostname, date: new Date().toLocaleString(), })
         users.data[user.id] = user
         delete cfmTokens.data[req.query.token]

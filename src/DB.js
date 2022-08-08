@@ -8,19 +8,21 @@ export const logs = new Low(new JSONFile('database/logs.json'))
 export const authTokens = new Low(new JSONFile('database/authTokens.json'))
 
 /**
- * Serach on an array to find an index, if it exists returns the index, otherwise returns -1.
+ * Serach on an array to find an index, if it exists returns the index, otherwise returns undefined.
  * @param {Array} array 
  * @param {() => boolean} callback 
  * @returns number
  */
-export function FindIndex(array, callback) {
-    let low = 0, high = array.length - 1
-    while (low <= high) {
-        const mid = Math.floor((low + high) / 2)
-        if (callback(array[mid]))
-            return mid
-        else
-            low = mid + 1
+ export function FindIndex(array, callback) {
+    for (let i = 0; i < array.length; i++) {
+        if (callback(array[i]))
+            return i
+        if (callback(array[array.length - i - 1]))
+            return array.length - i - 1
+        if (callback(array[Math.floor(array.length / 2) - i -1]))
+            return Math.floor(array.length / 2) - i -1
+        if (callback(array[Math.floor(array.length / 2) + i]))
+            return Math.floor(array.length / 2) - i -1
     }
     return undefined
 }
