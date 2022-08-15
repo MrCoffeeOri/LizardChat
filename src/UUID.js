@@ -1,8 +1,5 @@
-const alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
-
-function RandomBetween(min, max) {
-    return Math.floor(Math.random() * (max - min + 1) + min)
-}
+const RandomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1) + min)
+const CharsSequence = index => String.fromCharCode(RandomBetween(97, 122)) + RandomBetween(1 * index, 100) + String.fromCharCode(RandomBetween(65, 90))
 
 /**
  * Generates a random ID based on the given length, human friendly.
@@ -11,8 +8,7 @@ function RandomBetween(min, max) {
  */
 export function LengthUUID(length) {
     let UUIDchars = ''
-    for (let i = 0; i < 4; i++)
-        UUIDchars += Math.floor(Math.random() * 4) % 2 == 0 ? alphabet[Math.floor(Math.random() * alphabet.length)] : alphabet[Math.floor(Math.random() * alphabet.length)].toUpperCase()
+    UUIDchars += CharsSequence(length)
     UUIDchars += RandomBetween(length, 100)
     return UUIDchars
 }
@@ -22,10 +18,8 @@ export function LengthUUID(length) {
  * @returns string
  */
 export function TokenUUID() {
+    const total = RandomBetween(30, 80)
     let UUIDchars = ''
-    for (let i = 0; i < RandomBetween(30, 80); i++) {
-        UUIDchars += Math.floor(Math.random() * 4) % 2 == 0 ? alphabet[Math.floor(Math.random() * alphabet.length)] : alphabet[Math.floor(Math.random() * alphabet.length)].toUpperCase()
-        UUIDchars += RandomBetween(1 * i, 100)
-    }
+    for (let i = 0; i < total; i++) UUIDchars += CharsSequence(i)
     return UUIDchars
 }

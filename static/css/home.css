@@ -40,9 +40,7 @@ svg:hover {
     color: var(--second-color-theme);
 }
 
-svg:active {
-    transform: scale(1.1);
-}
+svg:active { transform: scale(1.1); }
 
 .selection {
     padding: 0;
@@ -137,6 +135,19 @@ li:hover {
 
 #data-view {
     height: 88%;
+}
+
+#data-view .search-user {
+    text-align: center;
+    background-color: var(--third-color-theme);
+    padding: 10px;
+    transition: 300ms ease;
+    border-radius: .4rem;
+}
+
+#data-view .search-user:hover {
+    cursor: pointer;
+    background-color: var(--third-lighten-color-theme);
 }
 
 ::-webkit-scrollbar {
@@ -310,7 +321,7 @@ li:hover {
     transition: 300ms ease;
 }
 
-#newGroupModal {
+#newGroup-modal {
     padding: 8px 0;
     border-radius: .4rem;
     width: 25vw;
@@ -323,30 +334,76 @@ li:hover {
     background-color: var(--main-darken-color-theme);
 }
 
-#newGroupModal h1 { 
+#newGroup-modal h1 { 
     margin: 0;
     font-size: 1.5em;
 }
 
-#newGroupModal div { margin: 7px; }
+#newGroup-modal div { margin: 7px; }
 
-#newGroupModal form {
+#newGroup-modal form {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-#newGroupModal label {
+#newGroup-modal label {
     display: block;
     text-align: start;
 }
 
-#newGroupModal textarea {
+#newGroup-modal textarea {
     resize: none;
     width: 100%;
     height: 8vh;
 }
 
-#newGroupModal input:focus, textarea:focus {
+#newGroup-modal input:focus, textarea:focus {
+    transform: scale(1.1);
+}
+
+#invites-modal {
+    position: absolute;
+    top: 34vh;
+    left: 37.5vw;
+    width: 25vw;
+    height: 32vh;
+    background-color: var(--main-darken-color-theme);
+    border-radius: .4rem;
+    color: white;
+    z-index: 4;
+    overflow-y: scroll;
+    text-align: center;
+}
+
+#invites-modal .invite {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 5px;
+    border-radius: .4rem;
+    background-color: var(--third-color-theme);
+    border: 2px solid var(--main-darken-color-theme);
+    transition: 200ms ease;
+}
+
+#invites-modal .invite button {
+    border-radius: .4rem;
+    margin: 0 5px;
+    padding: 5px 10px;
+    background-color: var(--second-color-theme);
+    border: none;
+    outline: none;
+    transition: 200ms ease;
+}
+
+#invites-modal .invite button:last-of-type {
+    background-color: red;
+    color: white;
+}
+
+#invites-modal .invite button:hover {
+    cursor: pointer;
     transform: scale(1.1);
 }

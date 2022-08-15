@@ -14,17 +14,18 @@
             <h1>Welcome to <span>NodeChat</span></h1>
             <h3>Thank you to join us!</h3>
         </div>
-        <div id="invitesModal" class="hidden">
+        <div id="invites-modal" class="hidden">
             <h2>Invites</h2>
-            <ul>
-                <li id="inviteToken">
-                    <span>User name | user id</span>
+            <div id="invites">
+                <div class="invite" id="inviteID">
+                    <span>From</span>
                     <span>Group name</span>
-                    <button>X</button>
-                </li>
-            </ul>
+                    <button id="Join">Join</button>
+                    <button id="Delete">Delete</button>
+                </div>
+            </div>
         </div>
-        <div id="newGroupModal" class="hidden">
+        <div id="newGroup-modal" class="hidden">
             <h1>Create a new group</h1>
             <form id="newGroupForm">
                 <div>
@@ -41,7 +42,7 @@
         <aside>
             <div id="info">
                 <span id="userName">User Name</span>
-                <svg modalID="invites" viewBox="0 0 216 154" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="uniqueElement" x="4.75" y="0.75" width="210.5" height="139.5" rx="15.25" fill="#BBBBBB" stroke="black" stroke-width="1.5"/><path d="M109 72.5L17 1H203L109 72.5Z" fill="#7FB600" stroke="black" stroke-width="1.5"/><path d="M210 136.161L124 61.5" stroke="black"/><path d="M8.72716 135.58L95.4999 61.5" stroke="black"/></svg>
+                <svg id="invites" viewBox="0 0 216 154" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="uniqueElement" x="4.75" y="0.75" width="210.5" height="139.5" rx="15.25" fill="#BBBBBB" stroke="black" stroke-width="1.5"/><path d="M109 72.5L17 1H203L109 72.5Z" fill="#7FB600" stroke="black" stroke-width="1.5"/><path d="M210 136.161L124 61.5" stroke="black"/><path d="M8.72716 135.58L95.4999 61.5" stroke="black"/></svg>
                 <svg viewID="options" class="uniqueElement" viewBox="0 0 24 24" width="24" height="24"><path class="uniqueElement" fill="currentColor" d="M12 7a2 2 0 1 0-.001-4.001A2 2 0 0 0 12 7zm0 2a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 9zm0 6a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 15z"></path></svg>
                 <ul id="options-view" class="hidden selection">
                     <li id="newGroup">Create a new group</li>

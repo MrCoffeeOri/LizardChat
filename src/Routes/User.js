@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createTransport } from "nodemailer";
-import { logs, users, cfmTokens, FindIndex } from '../DB.js'
+import { logs, users, cfmTokens, Find } from '../DB.js'
 import { LengthUUID, TokenUUID } from "../UUID.js"
 
 export const userRouter = Router()
@@ -10,7 +10,7 @@ userRouter
         if (!req.body.name || req.body.name == ' ' && !req.body.password || req.body.password == ' ', !req.body.email || req.body.email == ' ')
             return res.status(400).json({ error: 'User data is incorrect'})
         
-        if (FindIndex(Object.values(users.data), user => user.email == req.body.email) != undefined || req.body.email == process.env.EMAIL_USER)
+        if (!Find(Object.values(users.data), user => user.email == req.body.email) || req.body.email == process.env.EMAIL_USER)
             return res.status(403).json({ error: "Email already used" })
 
         const confirmationToken = TokenUUID()
@@ -47,12 +47,10 @@ userRouter
         })
     })
     .get("/login/:email/:password", async (req, res) => {
-        const usersArray = Object.values(users.data)
-        let user = FindIndex(usersArray, user => user.email == req.params.email && user.password == req.params.password)
-        if (user == undefined)
+        let user = Find(Object.values(users.data), user => user.email == req.params.email && user.password == req.params.password)
+        if (!user)
             return res.status(401).json({ message: "Invalid login" })
 
-        user = usersArray[user]
         const authToken = TokenUUID()
         users.data[user.id].authToken = authToken
         logs.data.push({ userID: user.id, ip: req.ip, method: "login", host: req.hostname, date: new Date().toLocaleString(), })

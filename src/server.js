@@ -3,10 +3,11 @@ import cors from 'cors'
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
 import { createServer } from 'http'
-import { users, logs, groups, dms, cfmTokens, FindIndex } from './DB.js'
+import { users, logs, groups, dms, cfmTokens, Find } from './DB.js'
 import { LengthUUID, TokenUUID } from './UUID.js'
 import { userRouter } from './routes/user.js'
 import { queryRouter } from './routes/query.js'
+import { messagesRouter } from './routes/message.js'
 
 const app = express()
 const server = createServer(app)
@@ -22,11 +23,12 @@ await cfmTokens.read()
 config()
 app.use(json())
 app.use(cors())
+app.use("/api/messages", messagesRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
 app.use("/", express.static('static'))
 
-io.on('connection', async (socket) => {
+io.on('connection', async socket => {
     if (!users.data[socket.handshake.auth.userID] || users.data[socket.handshake.auth.userID].authToken != socket.handshake.auth.token)
         return socket.emit('error', { error: "Invalid authentication" })
 
@@ -40,19 +42,28 @@ io.on('connection', async (socket) => {
     }
     socket.data.user = users.data[socket.handshake.auth.userID]
     responseUser.invites = Object.values(socket.data.user.invites)
-    for (const groupID in socket.data.user.groups)
-        if (Object.hasOwnProperty.call(socket.data.user.groups, groupID))
+    for (const groupID in socket.data.user.groups) {
+        if (Object.hasOwnProperty.call(socket.data.user.groups, groupID)) {
+            const messages = Object.values(groups.data[groupID].messages)
+            const limit = messages.length < 20 ? messages.length : 20
+            let filteredMessages = []
+            for (let i = 0; i < limit; i++)
+                filteredMessages.unshift(messages[messages.length - i - 1])
+
             responseUser.groups.push({ 
                 ...groups.data[groupID], 
                 users: Object.values(groups.data[groupID].users),
-                messages: groups.data[groupID].messages && Object.values(groups.data[groupID].messages),
-                inviteToken: groups.data[groupID].owner == socket.data.user.id ? groups.data[groupID].inviteToken : undefined 
+                messages: filteredMessages,
+                inviteToken: groups.data[groupID].owner == socket.data.user.id ? groups.data[groupID].inviteToken : undefined
             });
+        }
+    }
 
     for (const dmID in socket.data.user.dms)
         if (Object.hasOwnProperty.call(socket.data.user.dms, key))
-            responseUser.dms.push({ ...dms.data[dmID] })
+            responseUser.dms.push({ ...dms.data[dmID], messages: undefined })
     
+    socket.data.responseUser = responseUser
     await socket.join(Object.keys(socket.data.user.dms))
     await socket.join(Object.keys(socket.data.user.groups))
     await socket.join(socket.handshake.auth.userID)
@@ -63,8 +74,8 @@ io.on('connection', async (socket) => {
             if (!socket.data.user)
                 return next(new Error('No authentication provided'))
 
-            if (users.data[socket.data.user.id].authToken != socket.data.user.authToken)
-                return next(new Error('User authenticated in another device/instance'))
+            if (users.data[socket.data.user.id].authToken != socket.handshake.auth.token)
+                return socket.disconnect()
         }
         if (packet[0] == "group" || packet[0] == "usersInGroup") {
             const id = packet[1].id || packet[1].groupID
@@ -147,6 +158,9 @@ io.on('connection', async (socket) => {
                 break
 
             case "create":
+                if (socket.data.responseUser.groups.length == 70 || Object.keys(users.data[socket.data.user.id]).length == 70)
+                    return socket.emit('error', { error: "You cannot create more than 70 groups" })
+                    
                 const group = { name: data.name, description: data.description, id: LengthUUID(Object.keys(groups.data).length), users: {}, messages: {}, owner: socket.data.user.id, inviteToken: TokenUUID(), creationDate: new Date().toLocaleString() }
                 group.users[socket.data.user.id] = { name: socket.data.user.name, id: socket.data.user.id, isOwner: true, isBlocked: false }
                 groups.data[group.id] = group
@@ -161,7 +175,7 @@ io.on('connection', async (socket) => {
                 break
 
             case "join":
-                if (groups.data[data.id].users.find(user => user.id == socket.data.user.id))
+                if (groups.data[data.id].users[socket.data.user.id])
                     return socket.emit('error', { error: 'User is already in this group' })
 
                 groups.data[data.id].users[socket.data.user.id] = { name: socket.data.user.name, id: socket.data.user.id, isOwner: false, isBlocked: false }
@@ -251,7 +265,7 @@ io.on('connection', async (socket) => {
         
         switch (data.action) {
             case "send":
-                const message = { from: `${socket.data.user.name}-${socket.data.user.id}`, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, date: new Date().toLocaleString(), }
+                const message = { from: `${socket.data.user.name}-${socket.data.user.id}`, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, views: [socket.data.user.id], date: new Date().toLocaleString(), }
                 groups.data[data.groupID].messages[message.id] = message
                 break
 
@@ -262,7 +276,15 @@ io.on('connection', async (socket) => {
             case "edit":
                 groups.data[data.groupID].messages[data.messageID].message = data.message
                 break
+
+            case "view":
+                if (Find(groups.data[data.groupID].messages[data.messageID].views, view => view == socket.data.user.id))
+                    return socket.emit("error", { error: 'You have already viewed this message' })
+
+                groups.data[data.groupID].messages[data.messageID].views.push(socket.data.user.id)
+                break
         }
+
         io.to(data.groupID).emit("messages", { messages: Object.values(groups.data[data.groupID].messages), groupID: data.groupID, action: data.action, messageID: data.messageID })
         await groups.write()
     })
