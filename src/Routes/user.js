@@ -10,7 +10,7 @@ userRouter
         if (!req.body.name || req.body.name == ' ' && !req.body.password || req.body.password == ' ', !req.body.email || req.body.email == ' ')
             return res.status(400).json({ error: 'User data is incorrect'})
         
-        if (!Find(Object.values(users.data), user => user.email == req.body.email) || req.body.email == process.env.EMAIL_USER)
+        if (Find(Object.values(users.data), user => user.email == req.body.email) || req.body.email == process.env.EMAIL_USER)
             return res.status(403).json({ error: "Email already used" })
 
         const confirmationToken = TokenUUID()

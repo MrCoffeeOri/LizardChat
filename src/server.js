@@ -26,7 +26,7 @@ app.use(cors())
 app.use("/api/messages", messagesRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
-app.use("/", express.static('static'))
+app.use(express.static('static'))
 
 io.on('connection', async socket => {
     if (!users.data[socket.handshake.auth.userID] || users.data[socket.handshake.auth.userID].authToken != socket.handshake.auth.token)
