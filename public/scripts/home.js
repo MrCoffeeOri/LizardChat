@@ -22,6 +22,8 @@ if (new URLSearchParams(window.location.search).get('firstTime')) {
 }
 
 document.querySelectorAll("#options-view li").forEach(li => li.addEventListener('click', e => OpenModal(e)))
+document.querySelector("#messageInput > svg").addEventListener('click', SendMessageHandle)
+messageInp.addEventListener("keydown", e => e.key == "Enter" && SendMessageHandle())
 //document.getElementById("invites").addEventListener('click', OpenModal)
 window.addEventListener("click", e => ShowUniqueElement(`#${e.target.getAttribute("viewid") || e.path[1].getAttribute("viewid")}-view`, "#filter-view", "#options-view", "#messageConfigs-view", "#groupConfigs-view"))
 
@@ -74,21 +76,6 @@ document.getElementById("newGroupForm").addEventListener('submit', (e) => {
     e.target[1].value = ""
 })
 
-document.querySelector("#messageInput > svg").addEventListener('click', () => {
-    if (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null) return
-    socket.emit('message', { message: messageInp.value, groupID: selectedGroup.id, action: "send" })
-    messageInp.value = ""
-    document.querySelector("#messageInput > svg").classList.add("hidden")
-})
-
-messageInp.addEventListener("keydown", e => {
-    if (e.key == "Enter") {
-        socket.emit("message", { message: e.target.value, groupID: selectedGroup.id, action: "send" })
-        e.target.value = ''
-        e.target.dispatchEvent(new Event('input'))
-    }
-})
-
 // On scroll, load more messages
 messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && selectedGroup != null && !selectedGroup.allMessagesLoaded) {
@@ -133,6 +120,7 @@ socket.on("connect", () => {
             if (group.id == response.groupID) {
                 group.messages = response.messages
                 if (selectedGroup.id == response.groupID) {
+                    selectedGroup.messages = response.messages
                     switch (response.action) {
                         case "send":
                             RenderMessages(false, false, true, group.messages[group.messages.length - 1])
@@ -167,6 +155,13 @@ socket.on("connect", () => {
  // Config modal
 })
 */
+
+function SendMessageHandle() {
+    if (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null) return
+    socket.emit('message', { message: messageInp.value, groupID: selectedGroup.id, action: "send" })
+    messageInp.value = ""
+    messageInp.dispatchEvent(new Event('input'))
+}
 
 function OpenModal(e) {
     const bg = document.getElementById("background")
@@ -224,7 +219,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
         message => ["message", message.from.split('-')[1] == user.id  ? "user" : null], ...messages)
     
     document.querySelectorAll(".message > span")?.forEach(span => span.addEventListener('click', e => {
-        e.target.previousElementSibling.innerText = selectedGroup.messages.find(_message => _message.id.contains(e.path[1].id)).message
+        e.target.previousElementSibling.innerText = selectedGroup.messages.find(_message => _message.id.contains == e.path[1].id).message
         e.target.remove()
     }))
 
