@@ -224,7 +224,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
         message => ["message", message.from.split('-')[1] == user.id  ? "user" : null], ...messages)
     
     document.querySelectorAll(".message > span")?.forEach(span => span.addEventListener('click', e => {
-        e.target.previousElementSibling.innerText = selectedGroup.messages.find(_message => _message.id ==  e.path[1].id).message
+        e.target.previousElementSibling.innerText = selectedGroup.messages.find(_message => _message.id.contains(e.path[1].id)).message
         e.target.remove()
     }))
 
