@@ -30,7 +30,7 @@ userRouter
             to: req.body.email,
             subject: "Confirmation email",
             date: new Date().toLocaleString(),
-            text: "If you did not request this, please ignore this email.\n\nConfirm your email by clicking the link below:\n\n" + `${req.protocol}://${req.headers.host}/api/user/confirm?token=${confirmationToken}\n\nThis confirmation token will expire in 2 hours.`
+            text: "If you did not request this, please ignore this email.\n\nConfirm your email by clicking the link below:\n\n" + `https://${req.headers.host}/api/user/confirm?token=${confirmationToken}\n\nThis confirmation token will expire in 2 hours.`
         }, async (err, info) => {
             if (err)
                 return res.status(500).json({ error: err.message });
@@ -78,5 +78,5 @@ userRouter
         await logs.write()
         await users.write()
         await cfmTokens.write();
-        res.status(200).redirect(`${req.protocol}://${req.headers.host}/home.html?authToken=${user.authToken}&userID=${user.id}&firstTime=true`)
+        res.status(200).redirect(`/home.html?authToken=${user.authToken}&userID=${user.id}&firstTime=true`)
     })
