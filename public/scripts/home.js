@@ -92,7 +92,7 @@ messageInp.addEventListener("keydown", e => {
 // On scroll, load more messages
 messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && selectedGroup != null && !selectedGroup.allMessagesLoaded) {
-        const messages = (await (await fetch(`http://localhost:5000/api/messages/?amount=20&limit=${selectedGroup.messages.length <= 20 ? 20 : selectedGroup.messages.length}&userID=${user.id}&groupID=${selectedGroup.id}&authToken=${authToken}`)).json()).messages
+        const messages = (await (await fetch(`/api/messages/?amount=20&limit=${selectedGroup.messages.length <= 20 ? 20 : selectedGroup.messages.length}&userID=${user.id}&groupID=${selectedGroup.id}&authToken=${authToken}`)).json()).messages
         if (!messages.length) {
             selectedGroup.allMessagesLoaded = true
             return
