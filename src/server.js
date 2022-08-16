@@ -1,5 +1,7 @@
 import express, { json } from 'express'
 import cors from 'cors'
+import { join } from 'path'
+import { fileURLToPath } from 'url'
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
 import { createServer } from 'http'
@@ -26,7 +28,7 @@ app.use(cors())
 app.use("/api/messages", messagesRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
-app.use(express.static('static'))
+app.use(express.static(join(fileURLToPath(import.meta.url), 'public')))
 
 io.on('connection', async socket => {
     if (!users.data[socket.handshake.auth.userID] || users.data[socket.handshake.auth.userID].authToken != socket.handshake.auth.token)
