@@ -23,12 +23,7 @@ messagesRouter
     })
     .get("/", (req, res) => {
         const messages = Object.values(req.group.messages)
-        const limit = req.query.limit >= messages.length ? messages.length : req.query.limit
-        let limitedMessages = []
-        for (let i = Math.max(messages.length - limit - req.query.amount, 0); i < messages.length - limit; i++)
-            limitedMessages.push(messages[i])
-
-        res.status(200).json({ message: "Success", messages: limitedMessages })
+        res.status(200).json({ message: "Success", messages: messages.length > req.query.limit ? messages.slice(Math.max(messages.length - req.query.limit - req.query.amount, 0), messages.length - req.query.limit) : []})
     })
     .get("/find", (req, res) => {
         const messageIndex = Find(req.group.messages, message => message.text.indexOf(req.query.text) != -1)

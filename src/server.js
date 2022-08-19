@@ -1,7 +1,5 @@
 import express, { json } from 'express'
 import cors from 'cors'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
 import { createServer } from 'http'
@@ -264,10 +262,11 @@ io.on('connection', async socket => {
 
         if (data.action != "send" && !data.messageID && !groups.data[data.groupID].messages[data.messageID])
             return socket.emit("error", { error: 'Message ID is missing or does not exist' })
-        
+
+        let message = undefined
         switch (data.action) {
             case "send":
-                const message = { from: `${socket.data.user.name}-${socket.data.user.id}`, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, views: [socket.data.user.id], date: new Date().toLocaleString(), }
+                message = { from: `${socket.data.user.name}-${socket.data.user.id}`, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, views: [socket.data.user.id], date: new Date().toLocaleString(), }
                 groups.data[data.groupID].messages[message.id] = message
                 break
 
@@ -276,7 +275,7 @@ io.on('connection', async socket => {
                 break
 
             case "edit":
-                groups.data[data.groupID].messages[data.messageID].message = data.message
+                message = groups.data[data.groupID].messages[data.messageID].message = data.message
                 break
 
             case "view":
@@ -287,7 +286,7 @@ io.on('connection', async socket => {
                 break
         }
 
-        io.to(data.groupID).emit("messages", { messages: Object.values(groups.data[data.groupID].messages), groupID: data.groupID, action: data.action, messageID: data.messageID })
+        io.to(data.groupID).emit("message", { message, groupID: data.groupID, action: data.action, messageID: data.messageID })
         await groups.write()
     })
 

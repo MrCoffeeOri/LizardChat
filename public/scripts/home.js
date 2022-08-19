@@ -76,7 +76,6 @@ document.getElementById("newGroupForm").addEventListener('submit', (e) => {
     e.target[1].value = ""
 })
 
-// On scroll, load more messages
 messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && selectedGroup != null && !selectedGroup.allMessagesLoaded) {
         const messages = (await (await fetch(`/api/messages/?amount=20&limit=${selectedGroup.messages.length <= 20 ? 20 : selectedGroup.messages.length}&userID=${user.id}&groupID=${selectedGroup.id}&authToken=${authToken}`)).json()).messages
@@ -115,27 +114,27 @@ socket.on("connect", () => {
         }
     })
 
-    socket.on("messages", response => {
+    socket.on("message", response => {
         for (const group of user.groups) {
             if (group.id == response.groupID) {
-                group.messages = response.messages
-                if (selectedGroup.id == response.groupID) {
-                    selectedGroup.messages = response.messages
-                    switch (response.action) {
-                        case "send":
-                            RenderMessages(false, false, true, group.messages[group.messages.length - 1])
-                            break;
-                    
-                        case "edit":
-                            document.getElementById(response.messageID).innerText = group.messages.find(message => message.id == response.messageID).message
-                            break;
+                switch (response.action) {
+                    case "send":
+                        group.messages.push(response.message)
+                        RenderMessages(false, false, true, response.message)
+                        break;
+                
+                    case "edit":
+                        group.messages[group.messages.findIndex(message => message.id == response.message.id)] = response.message
+                        document.getElementById(response.messageID).innerText = response.message
+                        break;
 
-                        case "delete":
-                            document.getElementById(response.messageID).remove()
-                            break;
-                    }
-                    break
+                    case "delete":
+                        group.messages.splice(group.messages.findIndex(message => message.id == response.messageID), 1)
+                        document.getElementById(response.messageID).remove()
+                        break;
                 }
+                selectedGroup.messages = group.messages
+                break
             }
         }
     })

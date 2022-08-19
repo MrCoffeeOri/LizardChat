@@ -9,7 +9,7 @@
 	"main": "./src/index.js",
 	"scripts": {
 		"test": "nodemon ./src/server.js",
-		"start": "node src/server.js"
+		"start": "node ./src/server.js"
 	},
 	"license": "MIT",
 	"homepage": "https://github.com/moniq-e/NodeChat#readme",
