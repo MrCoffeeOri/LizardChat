@@ -180,7 +180,7 @@ li:hover {
 }
 
 #messages-view {
-    height: 90vh;
+    height: 80.2vh;
     flex-direction: column;
 }
 
@@ -444,3 +444,11 @@ li:hover {
 #sendInvite-modal h1 { margin: 5px 0 0 0; }
 
 #sendInvite-modal button { margin: 15px auto; }
+
+#group-info {
+    text-align: center;
+    background-color: var(--third-color-theme);
+    color: white;
+}
+
+#group-info h1, p { margin: 0; }

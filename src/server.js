@@ -136,7 +136,7 @@ io.on('connection', async socket => {
                 groups.data[group.id] = group
                 users.data[socket.data.user.id].groups[group.id] = true
                 await socket.join(group.id)
-                socket.emit('groupEvent', { group: {...group, messages: [], users: [socket.data.user.id]}, action: data.action })
+                socket.emit('groupEvent', { group: {...group, messages: [], users: [{ name: socket.data.user.name, id: socket.data.user.id, isOwner: true, isBlocked: false }]}, action: data.action })
                 break
             
             case "rename":
@@ -151,14 +151,15 @@ io.on('connection', async socket => {
                 groups.data[data.id].users[socket.data.user.id] = { name: socket.data.user.name, id: socket.data.user.id, isOwner: false, isBlocked: false }
                 users.data[socket.data.user.id].groups[data.id] = true
                 await socket.join(data.id)
-                io.to(data.id).emit('usersInGroup', { users: groups.data[data.id].users, id: data.id })
+                io.to(data.id).emit('usersInGroup', { users: Object.values(groups.data[data.id].users), id: data.id })
                 break
 
             case "leave":
-                delete groups.data[groupIndex].users[socket.data.user.id]
+                delete groups.data[data.id].users[socket.data.user.id]
                 delete users.data[socket.data.user.id].groups[data.id]
+                io.to(data.id).emit('usersInGroup', { users: Object.values(groups.data[data.id].users), id: data.id })
+                socket.emit('groupEvent', { id: data.id, name: data.name, action: "leave" })
                 await socket.leave(data.id)
-                io.to(data.id).emit('usersInGroup', { users: groups.data[data.id].users, id: data.id })
                 break
         }
         await users.write()

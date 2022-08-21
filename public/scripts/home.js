@@ -6,6 +6,7 @@ const messageView = document.getElementById("messages-view")
 const searchInput = document.querySelector("#search > div > input")
 const messageInp = document.querySelector("#messageInput > input")
 const loadingIntro = document.getElementById("loading-intro")
+const groupInfo = document.getElementById("group-info")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
 let selectedGroup = null
 let user = null
@@ -131,18 +132,31 @@ socket.on("connect", () => {
     })
 
     socket.on("groupEvent", response => {
-        if (response.action == "create") {
-            user.groups.push(response.group)
-            RenderGroups(false, response.group)
-        }
+        switch (response.action) {
+            case "create":
+                user.groups.push(response.group)
+                RenderGroups(false, response.group)
+                break;
+
+            case "leave":
+            case "delete":
+                user.groups.splice(user.groups.findIndex(group => group.id == response.id), 1)
+                groupInfo.classList.add("hidden")
+                document.getElementById(response.id).remove()
+                messageView.innerHTML = ''
+                messageView.style.display = "none"
+                document.getElementById("messageInput").style.display = "none"
+                document.getElementById("messages-placeholder").classList.remove("hidden")
+                break;
+
+            case "rename":
+                user.groups.find(group => group.id == response.id).name = response.name
+                if (selectedGroup.id == response.id) selectedGroup.name = response.name
+                document.getElementById(response.id).children[0].innerText = response.name
+                break;
         
-        if (response.action == "delete") {
-            user.groups.splice(user.groups.findIndex(group => group.id == response.id), 1)
-            document.getElementById(response.id).remove()
-            messageView.innerHTML = ''
-            messageView.style.display = "none"
-            document.getElementById("messageInput").style.display = "none"
-            document.getElementById("messages-placeholder").classList.remove("hidden")
+            default:
+                break;
         }
     })
 
@@ -205,8 +219,11 @@ function OpenModal(e) {
 
 async function GroupClickHandle(group) {
     if (!selectedGroup || selectedGroup.id != group.id) {
-        console.log(group)
         selectedGroup = { ...group, allMessagesLoaded: false }
+        groupInfo.classList.remove("hidden")
+        groupInfo.children[0].innerText = selectedGroup.name
+        const usersParsed = selectedGroup.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
+        groupInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
         document.getElementById("messages-placeholder").classList.add("hidden")
         messageView.classList.remove("hidden")
         messageView.style.display = "flex"
@@ -223,7 +240,10 @@ function ShowUniqueElement(source,...others) {
 function RenderMessages(clear, prepend, scroll, ...messages) {
     RenderElements(messageView.id, message => `${message.from.split('-')[1] != user.id ? `<p class="message-header">${message.from}</p>` : '' }<p class="message-content">${message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${message.date.split(' ')[0] == new Date().toLocaleDateString() ? message.date.split(' ')[1] : message.date}</p>`, clear,prepend, 
         (message, e) => {
-            if (e.target.tagName != "SPAN" && e.target.classList.contains("user")) {
+            if (e.target.tagName == "SPAN") {
+                e.target.previousElementSibling.innerText = selectedGroup.messages.find(_message => _message.id == e.path[1].id).message
+                e.target.remove()
+            } else if (e.target.classList.contains("user") || e.path[1].classList.contains("user")) {
                 e.target.setAttribute("viewID", "messageConfigs")
                 const menu = document.getElementById("messageConfigs-view")
                 menu.style.top = e.pageY + "px"
@@ -240,30 +260,41 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                 }
             }
         }, message => ["message", message.from.split('-')[1] == user.id  ? "user" : null], ...messages)
-    
-    document.querySelectorAll(".message > span")?.forEach(span => span.addEventListener('click', e => {
-        e.target.previousElementSibling.innerText = selectedGroup.messages.find(_message => _message.id == e.path[1].id).message
-        e.target.remove()
-    }))
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
 
 function RenderGroups(clear, ...groups) { 
-    RenderElements("data-view", group => `<span>${group.name}</span><svg viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, false, GroupClickHandle, () => ["group"], ...groups)
-    groups.forEach(group => document.getElementById(group.id).children[1].addEventListener('click', e => {
-        const menu = document.getElementById("groupConfigs-view")
-        menu.innerHTML = ''
-        const li = document.createElement("li")
-        li.id = group.owner == user.id ? "delete" : "leave"
-        li.innerText = group.owner == user.id ? "Delete" : "Leave"
-        menu.style.top = e.pageY + "px"
-        menu.style.left = e.pageX + "px"
-        menu.appendChild(li)
-        menu.onclick = e => {
-            if (group.owner != user.id && e.target.id == "delete") return
-            socket.emit("group", { id: group.id, action: e.target.id })
+    RenderElements("data-view", group => `<span>${group.name}</span><svg viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, false, 
+    (group, e) => {
+        GroupClickHandle(group)
+        if (e.target.tagName == "svg") {
+            const menu = document.getElementById("groupConfigs-view")
+            const li = document.createElement("li")
+            menu.innerHTML = ''
+            li.id = group.owner == user.id ? "delete" : "leave"
+            li.innerText = group.owner == user.id ? "Delete" : "Leave"
+            if (group.owner == user.id) {
+                const li = document.createElement("li")
+                li.id = "edit"
+                li.innerText = "Edit"
+                menu.appendChild(li)
+            }
+            menu.style.top = e.pageY + "px"
+            menu.style.left = e.pageX + "px"
+            menu.appendChild(li)
+            menu.onclick = e => {
+                if (e.target.id != "edit") {
+                    if (group.owner != user.id && e.target.id == "delete") return
+                    socket.emit("group", { id: group.id, action: e.target.id })
+                } else {
+                    document.getElementById("groupName").value = group.name
+                    document.getElementById("groupDescription").value = group.description
+                    document.getElementById("groupID").value = group.id
+                    OpenModal({ target: { id: "groupEdit" } })
+                }
+            }
         }
-    }))
+    }, () => ["group"], ...groups)
 }
 
 function RenderInvites(clear, ...invites) {
