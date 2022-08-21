@@ -8,8 +8,7 @@ const messageInp = document.querySelector("#messageInput > input")
 const loadingIntro = document.getElementById("loading-intro")
 const groupInfo = document.getElementById("group-info")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
-let selectedGroup = null
-let user = null
+let selectedGroup = null, user = null
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
     const toggleWelcome = () => {
@@ -32,10 +31,17 @@ document.querySelectorAll("#options-view li").forEach(li => li.addEventListener(
     if (e.target.id == "sendInvite") {
         const selection = document.getElementById("groupToInvite")
         user.groups.forEach(group => {
-            selection.appendChild(document.createElement("option"))
-            selection.lastChild.value = group.id
-            selection.lastChild.innerHTML = group.name
+            if (group.owner == user.id) {
+                selection.appendChild(document.createElement("option"))
+                selection.lastChild.value = group.id
+                selection.lastChild.innerHTML = group.name
+            }
         })
+        if (selection.children.length == 0) {
+            selection.innerHTML = "<option value=''>User has no groups to invite</option>"
+            selection.disabled = true
+            return
+        }
     }
     OpenModal(e)
 }))
@@ -128,7 +134,11 @@ socket.on("connect", () => {
 
     socket.on("usersInGroup", response => {
         user.groups.find(group => group.id == response.id).users = response.users
-        if (response.id == selectedGroup.id) selectedGroup.users = response.users
+        if (response.id == selectedGroup.id) {
+            selectedGroup.users = response.users
+            const usersParsed = selectedGroup.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
+            groupInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
+        }
     })
 
     socket.on("groupEvent", response => {
@@ -151,8 +161,10 @@ socket.on("connect", () => {
 
             case "rename":
                 user.groups.find(group => group.id == response.id).name = response.name
-                if (selectedGroup.id == response.id) selectedGroup.name = response.name
-                document.getElementById(response.id).children[0].innerText = response.name
+                if (selectedGroup.id == response.id) {
+                    selectedGroup.name = response.name
+                    document.getElementById(response.id).children[0].innerText = response.name
+                }
                 break;
         
             default:
@@ -220,9 +232,9 @@ function OpenModal(e) {
 async function GroupClickHandle(group) {
     if (!selectedGroup || selectedGroup.id != group.id) {
         selectedGroup = { ...group, allMessagesLoaded: false }
+        const usersParsed = selectedGroup.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
         groupInfo.classList.remove("hidden")
         groupInfo.children[0].innerText = selectedGroup.name
-        const usersParsed = selectedGroup.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
         groupInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
         document.getElementById("messages-placeholder").classList.add("hidden")
         messageView.classList.remove("hidden")
