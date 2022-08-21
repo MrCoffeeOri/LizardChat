@@ -19,7 +19,7 @@ export const authTokens = new Low(new JSONFile('database/authTokens.json'))
             return array.length == 1 && !callback(array[i]) ? undefined : array[i]
 
         if (callback(array[array.length - i - 1]))
-            return [array.length - i - 1]
+            return array[array.length - i - 1]
 
         if (callback(array[Math.floor(array.length / 2) - i -1]))
             return array[Math.floor(array.length / 2) - i -1]

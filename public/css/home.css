@@ -321,17 +321,31 @@ li:hover {
     transition: 300ms ease;
 }
 
+.modal {
+    z-index: 6;
+    text-align: center;
+    position: absolute;
+    background-color: var(--main-darken-color-theme);
+}
+
+.modal form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal label {
+    display: block;
+    text-align: start;
+}
+
 #newGroup-modal {
     padding: 8px 0;
     border-radius: .4rem;
     width: 25vw;
-    text-align: center;
-    position: absolute;
     top: 34vh;
     left: 37.5vw;
     color: white;
-    z-index: 4;
-    background-color: var(--main-darken-color-theme);
 }
 
 #newGroup-modal h1 { 
@@ -340,17 +354,6 @@ li:hover {
 }
 
 #newGroup-modal div { margin: 7px; }
-
-#newGroup-modal form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-#newGroup-modal label {
-    display: block;
-    text-align: start;
-}
 
 #newGroup-modal textarea {
     resize: none;
@@ -363,24 +366,18 @@ li:hover {
 }
 
 #invites-modal {
-    position: absolute;
     top: 34vh;
     left: 37.5vw;
-    width: 25vw;
+    max-width: 35vw;
     height: 32vh;
     background-color: var(--main-darken-color-theme);
     border-radius: .4rem;
     color: white;
-    z-index: 4;
-    overflow-y: scroll;
-    text-align: center;
+    z-index: 5;
 }
 
 #invites-modal .invite {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
+    padding: 9px;
     margin: 5px;
     border-radius: .4rem;
     background-color: var(--third-color-theme);
@@ -407,3 +404,43 @@ li:hover {
     cursor: pointer;
     transform: scale(1.1);
 }
+
+#loading-intro {
+    color: white;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--second-darken-color-theme);
+    z-index: 5;
+}
+
+#loading-intro img { width: 10vw; }
+
+#sendInvite-modal {
+    top: 34vh;
+    left: 37.5vw;
+    width: 25vw;
+    border-radius: .4rem;
+    color: white;
+}
+
+#sendInvite-modal select {
+    outline: none;
+    border: none;
+    padding: 6px;
+    color: white;
+    background-color: var(--third-color-theme);
+}
+
+#sendInvite-modal div { margin: 10px 0; }
+
+#sendInvite-modal h1 { margin: 5px 0 0 0; }
+
+#sendInvite-modal button { margin: 15px auto; }
