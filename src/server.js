@@ -7,7 +7,7 @@ import { users, logs, groups, dms, cfmTokens, Find } from './DB.js'
 import { LengthUUID, TokenUUID } from './UUID.js'
 import { userRouter } from './Routes/user.js'
 import { queryRouter } from './Routes/query.js'
-import { groupRouter } from './routes/group.js'
+import { groupRouter } from './Routes/group.js'
 
 const app = express()
 const server = createServer(app)
