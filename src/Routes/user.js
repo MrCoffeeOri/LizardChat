@@ -22,9 +22,7 @@ userRouter
                 user: process.env.EMAIL_USER,
                 pass: process.env.PASSWORD_USER
             },
-            tls: {
-                rejectUnauthorized: false
-            }
+            tls: { rejectUnauthorized: false }
         }).sendMail({
             from: process.env.EMAIL_USER,
             to: req.body.email,

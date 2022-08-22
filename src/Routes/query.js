@@ -17,7 +17,7 @@ queryRouter.get("/:table/:limit/:chars", async (req, res) => {
 
     let query = []
     queryTable.forEach(item => {
-        if (item.name.indexOf(req.params.chars) != -1) {
+        if (item.name.includes(req.params.chars) || item.name.includes(req.params.chars.toLowerCase()) || item.name.includes(req.params.chars.toUpperCase())) {
             query.push(item.isPrivate ? 
             { id: item.id, name: item.name, creationDate: item.creationDate } 
             : 

@@ -120,7 +120,7 @@ document.getElementById("sendInviteForm").addEventListener('submit', e => {
 socket.on("connect", () => {
     clearInterval(loadingInterval)
     loadingIntro.remove()
-    socket.on("user", response => { 
+    socket.on("user", response => {
         user = response
         console.log(user)
         document.getElementById("userName").innerText = `${user.name}-${user.id}`
@@ -150,6 +150,7 @@ socket.on("connect", () => {
 
             case "leave":
             case "delete":
+                if (response.id == selectedGroup.id) selectedGroup = null
                 user.groups.splice(user.groups.findIndex(group => group.id == response.id), 1)
                 groupInfo.classList.add("hidden")
                 document.getElementById(response.id).remove()
@@ -313,9 +314,9 @@ function RenderInvites(clear, ...invites) {
     if (invites.length == 0) 
         document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">User has no invites</h2>`
     else 
-        RenderElements("invites-modal", invite => `<span>${invite.from}</span><span>${invite.group.name}</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (invite, e) => {
+        RenderElements("invites-modal", invite => `<span>${invite.from.name}-${invite.from.id}</span><span>${invite.group.name}</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (invite, e) => {
             if (e.target.tagName == "BUTTON") {
-                socket.emit("handleInvite", { token: e.path[1].id, action: e.target.getAttribute("action") })
+                socket.emit("handleInvite", { id: e.path[1].id, token: invite.token, action: e.target.getAttribute("action") })
                 e.path[2].classList.add("hidden")
                 document.getElementById("background").classList.add("hidden")
             }
@@ -328,7 +329,7 @@ function RenderElements(viewID, innerHTML, clear, prepend, onclick, classList, .
     if (clear) viewElement.innerHTML = ''
     elements.forEach(element => {
         const elementToRender = document.createElement("div")
-        elementToRender.id = element.id || element.token
+        elementToRender.id = element.id
         elementToRender.innerHTML = innerHTML(element)
         if (classList) elementToRender.className = classList(element).join(' ')
         if (onclick) elementToRender.addEventListener('click', e => onclick(element, e))

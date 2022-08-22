@@ -47,11 +47,11 @@ io.on('connection', async socket => {
             if (users.data[socket.data.user.id].authToken != socket.handshake.auth.token)
                 return socket.disconnect()
         }
-        if (packet[0] == "group" || packet[0] == "usersInGroup") {
+        if (packet[0] == "group" || packet[0] == "userInGroup") {
             const id = packet[1].id || packet[1].groupID
             if (packet[1].action != "create" && !groups.data[id])
                 socket.emit('error', { error: 'Invalid group' })
-            if (packet[1].action != "join" && packet[1].action != "leave" && packet[1].action != "create" && groups.data[id].owner !== socket.data.user.id)
+            if (packet[1].action == "rename" || packet[1].action == "delete" && groups.data[id].owner !== socket.data.user.id)
                 socket.emit('error', { error: 'You are not the owner of this group' })
         }
         next()
@@ -145,6 +145,9 @@ io.on('connection', async socket => {
                 break
 
             case "join":
+                if (data.token != groups.data[data.id].inviteToken)
+                    return socket.emit('error', { error: "Invalid token" })
+                    
                 if (groups.data[data.id].users[socket.data.user.id])
                     return socket.emit('error', { error: 'User is already in this group' })
 
@@ -201,26 +204,32 @@ io.on('connection', async socket => {
             
         if (!users.data[data.to] || data.to === socket.data.user.id)
             return socket.emit("error", { error: 'Invalid user to invite' })
-        
-        const invite = { from: socket.data.user.id, to: data.to, token: groups.data[data.groupID].inviteToken, group: { id: data.groupID, name: groups.data[data.groupID].name, description: groups.data[data.groupID].description } }
-        users.data[data.to].invites[invite.token] = invite
+
+        if (users.data[data.to].invites[socket.data.user.id])
+            return socket.emit("error", { error: 'User already has an invite from you' })
+
+        if (groups.data[data.groupID].users[data.to])
+            return socket.emit("error", { error: 'User is already in the group' })
+
+        const invite = { from: { name: socket.data.user.name, id: socket.data.user.id }, to: { name: users.data[data.to].name, id: data.to }, id: socket.data.user.id, token: groups.data[data.groupID].inviteToken, group: { id: data.groupID, name: groups.data[data.groupID].name, description: groups.data[data.groupID].description } }
+        users.data[data.to].invites[invite.id] = invite
         io.to(data.to).emit('inviteRecived', invite)
         await users.write()
     })
 
     socket.on('handleInvite', async (data) => {
-        if (!users.data[socket.data.user.id].invites[data.token])
+        const groupID = users.data[socket.data.user.id].invites[data.id].group.id
+        if (!groupID || data.token != groups.data[groupID].inviteToken)
             return socket.emit('error', { error: 'Invalid invite' })
 
-        const groupID = users.data[socket.data.user.id].invites[data.token].group.id
         if (data.action === "accept") {
             users.data[socket.data.user.id].groups[groupID] = true
             groups.data[groupID].users[socket.data.user.id] = { name: users.data[socket.data.user.id].name, id: socket.data.user.id, isOwner: false, isBlocked: false }
-            io.to(groupID).emit('groupUserAction', { users: Object.values(groups.data[groupID].users), groupID })
+            io.to(groupID).emit('usersInGroup', { users: Object.values(groups.data[groupID].users), id: groupID })
             await socket.join(groupID)
             await groups.write()
         }
-        delete users.data[socket.data.user.id].invites[data.token]
+        delete users.data[socket.data.user.id].invites[data.id]
         socket.emit("user", UserParser(users.data[socket.data.user.id]))
         await users.write()
     })
