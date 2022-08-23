@@ -241,36 +241,40 @@ io.on('connection', async socket => {
         if (groups.data[data.groupID].users[socket.data.user.id].isBlocked)
             return socket.emit("error", { error: 'You are blocked from this group' })
 
-        if (data.action != "send" && !data.messageID && !groups.data[data.groupID].messages[data.messageID])
+        if (data.action != "send" && !data.id && !groups.data[data.groupID].messages[data.id])
             return socket.emit("error", { error: 'Message ID is missing or does not exist' })
 
-        if (data.action != "send" && data.action != "view" && groups.data[data.groupID].messages[data.messageID].from.split('-')[1] != socket.data.user.id)
+        if (data.action != "send" && data.action != "view" && groups.data[data.groupID].messages[data.id].from.id != socket.data.user.id)
             return socket.emit("error", { error: 'You are not the owner of this message' })
 
         let message = undefined
         switch (data.action) {
             case "send":
-                message = { from: `${socket.data.user.name}-${socket.data.user.id}`, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, views: [socket.data.user.id], date: new Date().toLocaleString(), }
+                message = { from: { name: socket.data.user.name, id: socket.data.user.id }, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, views: { [socket.data.user.id]: true }, date: new Date().toLocaleString(), }
                 groups.data[data.groupID].messages[message.id] = message
                 break
 
             case "delete":
-                delete groups.data[data.groupID].messages[data.messageID]
+                delete groups.data[data.groupID].messages[data.id]
                 break
 
             case "edit":
-                message = groups.data[data.groupID].messages[data.messageID].message = data.message
+                message = groups.data[data.groupID].messages[data.id].message = data.message
                 break
 
             case "view":
-                if (Find(groups.data[data.groupID].messages[data.messageID].views, view => view == socket.data.user.id))
-                    return socket.emit("error", { error: 'You have already viewed this message' })
+                if (groups.data[data.groupID].messages[data.id].views[socket.data.user.id])
+                    return socket.emit("error", { error: 'User has already viewed this message' })
 
-                groups.data[data.groupID].messages[data.messageID].views.push(socket.data.user.id)
+                if (groups.data[data.groupID].messages[data.id].from.id == socket.data.user.id)
+                    return socket.emit("error", { error: 'User cannot view his own message' })
+
+                groups.data[data.groupID].messages[data.id].views[socket.data.user.id] = true
+                message = {...groups.data[data.groupID].messages[data.id], views: Object.keys(groups.data[data.groupID].messages[data.id].views)}
                 break
         }
 
-        io.to(data.groupID).emit("message", { message, groupID: data.groupID, action: data.action, messageID: data.messageID })
+        io.to(data.groupID).emit("message", { message, groupID: data.groupID, action: data.action, id: data.id })
         await groups.write()
     })
 
@@ -313,8 +317,8 @@ function UserParser(rawUser) {
             const messages = Object.values(groups.data[groupID].messages)
             let filteredMessages = []
             for (let i = 0; i < (messages.length < 10 ? messages.length : 10); i++)
-                filteredMessages.unshift(messages[messages.length - i - 1])
-
+                filteredMessages.unshift({...messages[messages.length - i - 1], views: Object.keys(messages[messages.length - i - 1].views)})
+                
             responseUser.groups.push({ 
                 ...groups.data[groupID], 
                 users: Object.values(groups.data[groupID].users),

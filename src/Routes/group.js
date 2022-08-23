@@ -15,7 +15,7 @@ function MessageValidation(req, res, next) {
     if (!groups.data[req.params.id].users[req.query.userID] || groups.data[req.params.id].users[req.query.userID].isBlocked)
         return res.status(403).json({ message: "User does not have access to the messages" })
 
-    req.messages = Object.values(groups.data[req.params.id].messages)
+    req.messages = Object.values(groups.data[req.params.id].messages).map(message => ({...message, views: Object.keys(message.views) }))
     next()
 }
 

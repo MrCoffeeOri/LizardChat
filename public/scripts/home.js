@@ -7,8 +7,9 @@ const searchInput = document.querySelector("#search > div > input")
 const messageInp = document.querySelector("#messageInput > input")
 const loadingIntro = document.getElementById("loading-intro")
 const groupInfo = document.getElementById("group-info")
+const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
-let selectedGroup = null, user = null
+let selectedGroup = null, user = null, editingMessage = false
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
     const toggleWelcome = () => {
@@ -102,9 +103,10 @@ messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && selectedGroup != null && !selectedGroup.allMessagesLoaded) {
         const data = (await (await fetch(`/api/group/${selectedGroup.id}/messages/?amount=10&limit=${selectedGroup.messages.length < 10 ? 10 : selectedGroup.messages.length}&userID=${user.id}&authToken=${authToken}`)).json())
         selectedGroup.allMessagesLoaded = data.remaining == 0
-        if (data.messages[0].id == selectedGroup.messages[0].id) return
+        if (!data.messages.length || data.messages[0].id == selectedGroup.messages[0].id) return
         RenderMessages(false, true, false, ...(new Array(...data.messages).reverse()))
-        messageView.scrollBy(0, document.getElementById(selectedGroup.messages[0].id).offsetTop - 10)
+        data.messages.forEach(message => !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedGroup.id, id: message.id, action: "view" }))
+        messageView.scrollBy(0, document.getElementById(selectedGroup.messages[0].id).offsetTop)
         selectedGroup.messages.unshift(...data.messages)
         user.groups.find(group => group.id == selectedGroup.id).messages = selectedGroup.messages
     }
@@ -115,6 +117,8 @@ document.getElementById("sendInviteForm").addEventListener('submit', e => {
     e.path[1].classList.add("hidden")
     document.getElementById("background").classList.add("hidden")
     socket.emit('createInvite', { to: e.target[0].value, groupID: e.target[1].value, action: "create" })
+    e.target[0].value = ''
+    e.target[1].value = ''
 })
 
 socket.on("connect", () => {
@@ -151,12 +155,12 @@ socket.on("connect", () => {
             case "leave":
             case "delete":
                 if (response.id == selectedGroup.id) selectedGroup = null
-                user.groups.splice(user.groups.findIndex(group => group.id == response.id), 1)
-                groupInfo.classList.add("hidden")
-                document.getElementById(response.id).remove()
                 messageView.innerHTML = ''
                 messageView.style.display = "none"
                 document.getElementById("messageInput").style.display = "none"
+                user.groups.splice(user.groups.findIndex(group => group.id == response.id), 1)
+                groupInfo.classList.add("hidden")
+                document.getElementById(response.id).remove()
                 document.getElementById("messages-placeholder").classList.remove("hidden")
                 break;
 
@@ -179,26 +183,39 @@ socket.on("connect", () => {
                 switch (response.action) {
                     case "send":
                         group.messages.push(response.message)
-                        RenderMessages(false, false, true, response.message)
+                        if (!selectedGroup || selectedGroup.id != response.groupID) {
+                            const groupElement = document.getElementById(response.groupID)
+                            notificationAudio.play()
+                            groupElement.children[1].style.display = "block"
+                            groupElement.children[1].innerText = groupElement.children[1].innerText == '' || groupElement.children[1].innerText == null ? 1 : Number(groupElement.children[1].innerText) + 1
+                        } else if (selectedGroup?.id == response.groupID) {
+                            RenderMessages(false, false, true, response.message)
+                            if (response.message.from.id != user.id) socket.emit("message", { groupID: selectedGroup.id, id: response.message.id, action: "view" })
+                        }
                         break;
                 
                     case "edit":
                         group.messages[group.messages.findIndex(message => message.id == response.message.id)] = response.message
-                        document.getElementById(response.messageID).innerText = response.message
+                        if (selectedGroup?.id == response.groupID) document.querySelector(`#${response.id} > .message-content`).innerText = response.message
                         break;
 
                     case "delete":
-                        group.messages.splice(group.messages.findIndex(message => message.id == response.messageID), 1)
-                        document.getElementById(response.messageID).remove()
+                        group.messages.splice(group.messages.findIndex(message => message.id == response.id), 1)
+                        if (selectedGroup?.id == response.groupID) document.getElementById(response.id).remove()
+                        break;
+
+                    case "view":
+                        group.messages[group.messages.findIndex(mesage => mesage.id == response.message.id)].views = response.message.views
                         break;
                 }
-                if (selectedGroup.id == response.groupID) selectedGroup = group
+                selectedGroup = response.groupID == selectedGroup.id ? group : selectedGroup
                 break
             }
         }
     })
 
     socket.on("error", response => {
+        if (response.error == "Invalid authentication") window.location.href = "/"
         alert(response.error)
     })
 
@@ -215,8 +232,9 @@ socket.on("connect", () => {
 
 function SendMessageHandle() {
     if (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null) return
-    socket.emit('message', { message: messageInp.value, groupID: selectedGroup.id, action: "send" })
+    socket.emit('message', {id: messageInp.getAttribute("messageToEditID"), message: messageInp.value, groupID: selectedGroup.id, action: editingMessage ? "edit" : "send" })
     messageInp.value = ""
+    editingMessage = false
     messageInp.dispatchEvent(new Event('input'))
 }
 
@@ -234,14 +252,17 @@ async function GroupClickHandle(group) {
     if (!selectedGroup || selectedGroup.id != group.id) {
         selectedGroup = { ...group, allMessagesLoaded: false }
         const usersParsed = selectedGroup.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
-        groupInfo.classList.remove("hidden")
         groupInfo.children[0].innerText = selectedGroup.name
         groupInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
-        document.getElementById("messages-placeholder").classList.add("hidden")
-        messageView.classList.remove("hidden")
         messageView.style.display = "flex"
         document.getElementById("messageInput").style.display = "flex"
+        groupInfo.classList.remove("hidden")
+        document.getElementById("messages-placeholder").classList.add("hidden")
+        document.getElementById(selectedGroup.id).children[1].innerText = null
+        document.getElementById(selectedGroup.id).children[1].style.display = "none"
+        messageView.classList.remove("hidden")
         RenderMessages(true, false, true, ...selectedGroup.messages)
+        selectedGroup.messages.forEach(message => !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedGroup.id, id: message.id, action: "view" }))
     }
 }
 
@@ -251,7 +272,7 @@ function ShowUniqueElement(source,...others) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, message => `${message.from.split('-')[1] != user.id ? `<p class="message-header">${message.from}</p>` : '' }<p class="message-content">${message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${message.date.split(' ')[0] == new Date().toLocaleDateString() ? message.date.split(' ')[1] : message.date}</p>`, clear,prepend, 
+    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${message.date.split(' ')[0] == new Date().toLocaleDateString() ? message.date.split(' ')[1] : message.date}</p>`, clear,prepend, 
         (message, e) => {
             if (e.target.tagName == "SPAN") {
                 e.target.previousElementSibling.innerText = selectedGroup.messages.find(_message => _message.id == e.path[1].id).message
@@ -263,21 +284,23 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                 menu.style.left = e.pageX + "px"
                 menu.onclick = e => {
                     if (e.target.id == "delete")
-                        socket.emit("message", { groupID: selectedGroup.id, messageID: message.id, action: 'delete' })
+                        socket.emit("message", { groupID: selectedGroup.id, id: message.id, action: 'delete' })
     
                     if (e.target.id == "edit") {
                         const messageToEdit = selectedGroup.messages.find(_message => _message.id ==  message.id)
-                        document.getElementById("messageInput").value = messageToEdit.message
-                        document.getElementById("messageInput").focus()
+                        editingMessage = true
+                        messageInp.setAttribute("messageToEditID", message.id)
+                        messageInp.value = messageToEdit.message
+                        messageInp.focus()
                     }
                 }
             }
-        }, message => ["message", message.from.split('-')[1] == user.id  ? "user" : null], ...messages)
+        }, message => ["message", message.from.id == user.id  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
 
 function RenderGroups(clear, ...groups) { 
-    RenderElements("data-view", group => `<span>${group.name}</span><svg viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, false, 
+    RenderElements("data-view", group => `<span>${group.name}</span><div></div><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, false, 
     (group, e) => {
         GroupClickHandle(group)
         if (e.target.tagName == "svg") {
