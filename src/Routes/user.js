@@ -45,7 +45,7 @@ userRouter
         })
     })
     .get("/login/:email/:password", async (req, res) => {
-        let user = Find(Object.values(users.data), user => user.email == req.params.email && user.password == req.params.password)
+        let user = Find(Object.values(users.data), user => ((user.email == req.params.email) && (user.password == req.params.password)))
         if (!user)
             return res.status(401).json({ message: "Invalid login" })
 

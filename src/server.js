@@ -259,7 +259,8 @@ io.on('connection', async socket => {
                 break
 
             case "edit":
-                message = groups.data[data.groupID].messages[data.id].message = data.message
+                groups.data[data.groupID].messages[data.id].message = data.message
+                message = groups.data[data.groupID].messages[data.id]
                 break
 
             case "view":
@@ -270,11 +271,11 @@ io.on('connection', async socket => {
                     return socket.emit("error", { error: 'User cannot view his own message' })
 
                 groups.data[data.groupID].messages[data.id].views[socket.data.user.id] = true
-                message = {...groups.data[data.groupID].messages[data.id], views: Object.keys(groups.data[data.groupID].messages[data.id].views)}
+                message = groups.data[data.groupID].messages[data.id]
                 break
         }
 
-        io.to(data.groupID).emit("message", { message, groupID: data.groupID, action: data.action, id: data.id })
+        io.to(data.groupID).emit("message", { message: message && { ...message, views: Object.keys(message.views) }, groupID: data.groupID, action: data.action, id: data.id })
         await groups.write()
     })
 
@@ -320,7 +321,8 @@ function UserParser(rawUser) {
                 filteredMessages.unshift({...messages[messages.length - i - 1], views: Object.keys(messages[messages.length - i - 1].views)})
                 
             responseUser.groups.push({ 
-                ...groups.data[groupID], 
+                ...groups.data[groupID],
+                remainingMessages: Math.max(messages.length - 10, 0),
                 users: Object.values(groups.data[groupID].users),
                 messages: filteredMessages,
                 inviteToken: groups.data[groupID].owner == rawUser.id ? groups.data[groupID].inviteToken : undefined
@@ -329,7 +331,7 @@ function UserParser(rawUser) {
     }
     for (const dmID in rawUser.dms)
         if (Object.hasOwnProperty.call(rawUser.dms, key))
-            responseUser.dms.push({ ...dms.data[dmID], messages: undefined })
+            responseUser.dms.push(dms.data[dmID])
 
     return responseUser
 }

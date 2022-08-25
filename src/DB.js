@@ -15,15 +15,14 @@ export const authTokens = new Low(new JSONFile('database/authTokens.json'))
  */
  export function Find(array, callback) {
     for (let i = 0; i < array.length; i++) {
+        const fReverse = Math.max(Math.floor(array.length / 2) - i, 0)
+        const sVerse = Math.max(Math.ceil(array.length / 2) + i, 0)
+        const sReverse = array.length - i - 1
+
         if (callback(array[i])) return array[i]
-
-        if (array.length == 1) return undefined
-
-        if (callback(array[array.length - i - 1])) return array[array.length - i - 1]
-
-        if (callback(array[Math.floor(array.length / 2) - i -1])) return array[Math.floor(array.length / 2) - i -1]
-
-        if (callback(array[Math.floor(array.length / 2) + i + array.length % 2 == 0 ? 1 : 0])) return array[Math.floor(array.length / 2) - i -1]
+        if (callback(array[fReverse])) return array[fReverse]
+        if (callback(array[sVerse])) return array[sVerse]
+        if (callback(array[sReverse])) return array[sReverse]
+        if (i == fReverse || sVerse == sReverse) return undefined
     }
-    return undefined
 }

@@ -9,7 +9,7 @@ const loadingIntro = document.getElementById("loading-intro")
 const groupInfo = document.getElementById("group-info")
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
-let selectedGroup = null, user = null, editingMessage = false
+let selectedGroup = null, user = null, editingMessage = false, nonViewedMessages = {}
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
     const toggleWelcome = () => {
@@ -48,8 +48,8 @@ document.querySelectorAll("#options-view li").forEach(li => li.addEventListener(
 }))
 
 document.getElementById("invites").addEventListener('click', e => {
-    RenderInvites(true, ...user.invites)
     OpenModal(e)
+    RenderInvites(true, ...user.invites)
 })
 
 searchInput.addEventListener('input', e => {
@@ -101,11 +101,12 @@ document.getElementById("newGroupForm").addEventListener('submit', (e) => {
 
 messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && selectedGroup != null && !selectedGroup.allMessagesLoaded) {
-        const data = (await (await fetch(`/api/group/${selectedGroup.id}/messages/?amount=10&limit=${selectedGroup.messages.length < 10 ? 10 : selectedGroup.messages.length}&userID=${user.id}&authToken=${authToken}`)).json())
+        console.log(selectedGroup.messages.length)
+        const data = (await (await fetch(`/api/group/${selectedGroup.id}/messages/?amount=10&limit=${selectedGroup.messages.length}&userID=${user.id}&authToken=${authToken}`)).json())
         selectedGroup.allMessagesLoaded = data.remaining == 0
         if (!data.messages.length || data.messages[0].id == selectedGroup.messages[0].id) return
         RenderMessages(false, true, false, ...(new Array(...data.messages).reverse()))
-        data.messages.forEach(message => !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedGroup.id, id: message.id, action: "view" }))
+        data.messages.forEach(message => message.from.id != user.id && !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedGroup.id, id: message.id, action: "view" }))
         messageView.scrollBy(0, document.getElementById(selectedGroup.messages[0].id).offsetTop)
         selectedGroup.messages.unshift(...data.messages)
         user.groups.find(group => group.id == selectedGroup.id).messages = selectedGroup.messages
@@ -129,11 +130,23 @@ socket.on("connect", () => {
         console.log(user)
         document.getElementById("userName").innerText = `${user.name}-${user.id}`
         RenderGroups(true, ...user.groups)
+        user.groups.forEach(group => {
+            const nVM = group.messages.filter(message => message.from.id != user.id && !message.views.some(view => view == user.id))
+            nonViewedMessages[group.id] = nVM.length > 0 ? nVM : undefined
+            ToggleNotification(document.getElementById(group.id), nVM.length > 0)
+        })
     })
 
     socket.on("inviteRecived", invite => {
         user.invites.push(invite)
-        if (!document.getElementById("invites-modal").classList.contains("hidden")) RenderInvites(false, invite)
+        const inviteNotification = document.getElementById("invites-notification")
+        inviteNotification.classList.remove("hidden")
+        inviteNotification.innerText = user.invites.length
+        if (!document.getElementById("invites-modal").classList.contains("hidden")) {
+            RenderInvites(false, invite)
+            inviteNotification.classList.add("hidden")
+            inviteNotification.innerText = null
+        }
     })
 
     socket.on("usersInGroup", response => {
@@ -178,40 +191,35 @@ socket.on("connect", () => {
     })
 
     socket.on("message", response => {
-        for (const group of user.groups) {
-            if (group.id == response.groupID) {
-                switch (response.action) {
-                    case "send":
-                        group.messages.push(response.message)
-                        if (!selectedGroup || selectedGroup.id != response.groupID) {
-                            const groupElement = document.getElementById(response.groupID)
-                            notificationAudio.play()
-                            groupElement.children[1].style.display = "block"
-                            groupElement.children[1].innerText = groupElement.children[1].innerText == '' || groupElement.children[1].innerText == null ? 1 : Number(groupElement.children[1].innerText) + 1
-                        } else if (selectedGroup?.id == response.groupID) {
-                            RenderMessages(false, false, true, response.message)
-                            if (response.message.from.id != user.id) socket.emit("message", { groupID: selectedGroup.id, id: response.message.id, action: "view" })
-                        }
-                        break;
-                
-                    case "edit":
-                        group.messages[group.messages.findIndex(message => message.id == response.message.id)] = response.message
-                        if (selectedGroup?.id == response.groupID) document.querySelector(`#${response.id} > .message-content`).innerText = response.message
-                        break;
-
-                    case "delete":
-                        group.messages.splice(group.messages.findIndex(message => message.id == response.id), 1)
-                        if (selectedGroup?.id == response.groupID) document.getElementById(response.id).remove()
-                        break;
-
-                    case "view":
-                        group.messages[group.messages.findIndex(mesage => mesage.id == response.message.id)].views = response.message.views
-                        break;
+        const group = user.groups.find(group => group.id == response.groupID)
+        switch (response.action) {
+            case "send":
+                group.messages.push(response.message)
+                if (!selectedGroup || selectedGroup.id != response.groupID) {
+                    notificationAudio.play()
+                    nonViewedMessages[response.groupID] = nonViewedMessages[response.groupID] ? new Array(...nonViewedMessages[response.groupID], response.message) : [response.message]
+                    ToggleNotification(document.getElementById(response.groupID), true)
+                } else {
+                    RenderMessages(false, false, true, response.message)
+                    if (response.message.from.id != user.id) socket.emit("message", { groupID: selectedGroup.id, id: response.message.id, action: "view" })
                 }
-                selectedGroup = response.groupID == selectedGroup.id ? group : selectedGroup
-                break
-            }
+                break;
+        
+            case "edit":
+                group.messages[group.messages.findIndex(message => message.id == response.message.id)] = response.message.message
+                if (selectedGroup?.id == response.groupID) document.querySelector(`#${response.id} > .message-content`).innerText = response.message.message
+                break;
+
+            case "delete":
+                group.messages.splice(group.messages.findIndex(message => message.id == response.id), 1)
+                if (selectedGroup?.id == response.groupID) document.getElementById(response.id).remove()
+                break;
+
+            case "view":
+                group.messages[group.messages.findIndex(mesage => mesage.id == response.message.id)].views = response.message.views
+                break;
         }
+        selectedGroup = selectedGroup && (response.groupID == selectedGroup.id) ? group : selectedGroup
     })
 
     socket.on("error", response => {
@@ -229,6 +237,14 @@ socket.on("connect", () => {
  // Config modal
 })
 */
+
+function ToggleNotification(groupElement, show = true) {
+    const lastMessage = nonViewedMessages[groupElement.id] && new String(nonViewedMessages[groupElement.id][nonViewedMessages[groupElement.id].length - 1].message)
+    groupElement.children[1].style.display = show ? "block" : "none"
+    groupElement.children[2].style.display = show ? "block" : "none"
+    groupElement.children[1].innerText = nonViewedMessages[groupElement.id]?.length
+    groupElement.children[2].innerText = lastMessage ? lastMessage.slice(0, 10) + (lastMessage.length > 10 ? '...' : '') : null
+}
 
 function SendMessageHandle() {
     if (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null) return
@@ -258,11 +274,14 @@ async function GroupClickHandle(group) {
         document.getElementById("messageInput").style.display = "flex"
         groupInfo.classList.remove("hidden")
         document.getElementById("messages-placeholder").classList.add("hidden")
-        document.getElementById(selectedGroup.id).children[1].innerText = null
-        document.getElementById(selectedGroup.id).children[1].style.display = "none"
         messageView.classList.remove("hidden")
+        ToggleNotification(document.getElementById(selectedGroup.id), false)
         RenderMessages(true, false, true, ...selectedGroup.messages)
-        selectedGroup.messages.forEach(message => !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedGroup.id, id: message.id, action: "view" }))
+        if (nonViewedMessages[group.id]) {
+            nonViewedMessages[group.id].forEach(message => socket.emit("message", { groupID: selectedGroup.id, id: message.id, action: "view" }))
+            delete nonViewedMessages[group.id]
+        }
+
     }
 }
 
@@ -300,7 +319,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
 }
 
 function RenderGroups(clear, ...groups) { 
-    RenderElements("data-view", group => `<span>${group.name}</span><div></div><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, false, 
+    RenderElements("data-view", group => `<span style="display: inline">${group.name}</span><span></span><span></span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, false, 
     (group, e) => {
         GroupClickHandle(group)
         if (e.target.tagName == "svg") {
