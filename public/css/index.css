@@ -1,7 +1,7 @@
 @import url(./settings.css);
 
 body {
-    background-image: url(../assets/background.png);
+    background-image: url(../assets/background.webp);
     overflow-y: hidden;
     display: flex;
 }
