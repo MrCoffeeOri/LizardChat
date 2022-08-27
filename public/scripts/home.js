@@ -53,14 +53,14 @@ document.getElementById("invites").addEventListener('click', e => {
 })
 
 searchInput.addEventListener('input', e => {
-    if (e.target.value.length <= 0) RenderGroups(true, ...user.groups)
+    if (e.target.value.length <= 0) RenderGroups(true, false, ...user.groups)
     document.querySelector("#search > div > svg").style.display = e.target.value.length > 0 ? "block" : "none"
 })
 
 document.querySelector("#search > div > svg").addEventListener('click', () => {
     searchInput.value = ""
     searchInput.dispatchEvent(new Event("input"))
-    RenderGroups(true, ...user.groups)
+    RenderGroups(true, false, ...user.groups)
 })
 
 searchInput.addEventListener('keydown', async e => {
@@ -69,7 +69,19 @@ searchInput.addEventListener('keydown', async e => {
         if (data.message != "Success")
             return alert(data.message)
 
-        RenderElements("data-view", queryData => `<p class="search-user">${queryData.name}</p>`, true, false, null, null, ...data.query)
+        RenderElements("data-view", queryData => `<p class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
+            const queryDataViewElement = document.getElementById("queryData-view")
+            queryDataViewElement.style.width = "68.15%"
+            queryDataViewElement.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="35" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/></svg>
+                <h1>${queryData.name}-${queryData.id}</h1>
+                <button>Send message</button>
+            `
+            queryDataViewElement.children[0].onclick = () => {
+                queryDataViewElement.style.width = 0
+                queryDataViewElement.innerHTML = null
+            }
+        }, null, ...data.query)
     } else if (e.key == "Enter")
         alert("Please enter a search query")
 })
@@ -127,9 +139,13 @@ socket.on("connect", () => {
     loadingIntro.remove()
     socket.on("user", response => {
         user = response
-        console.log(user)
         document.getElementById("userName").innerText = `${user.name}-${user.id}`
-        RenderGroups(true, ...user.groups)
+        user.groups.sort((a, b) => {
+            const aDate = new Date(a.messages[a.messages.length - 1].date)
+            const bDate = new Date(b.messages[b.messages.length - 1].date)
+            return aDate > bDate ? -1 : aDate < bDate ? 1 : aDate == bDate ? 0 : undefined
+        })
+        RenderGroups(true, false, ...user.groups)
         user.groups.forEach(group => {
             const nVM = group.messages.filter(message => message.from.id != user.id && !message.views.some(view => view == user.id))
             nonViewedMessages[group.id] = nVM.length > 0 ? nVM : undefined
@@ -162,7 +178,7 @@ socket.on("connect", () => {
         switch (response.action) {
             case "create":
                 user.groups.push(response.group)
-                RenderGroups(false, response.group)
+                RenderGroups(false, false, response.group)
                 break;
 
             case "leave":
@@ -194,6 +210,8 @@ socket.on("connect", () => {
         const group = user.groups.find(group => group.id == response.groupID)
         switch (response.action) {
             case "send":
+                document.getElementById(group.id).remove()
+                RenderGroups(false, true, group)
                 group.messages.push(response.message)
                 if (!selectedGroup || selectedGroup.id != response.groupID) {
                     notificationAudio.play()
@@ -291,7 +309,7 @@ function ShowUniqueElement(source,...others) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${message.date.split(' ')[0] == new Date().toLocaleDateString() ? message.date.split(' ')[1] : message.date}</p>`, clear,prepend, 
+    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? new Date(message.date).toLocaleTimeString() : message.date.toLocaleDateString()}</p>`, clear, prepend, 
         (message, e) => {
             if (e.target.tagName == "SPAN") {
                 e.target.previousElementSibling.innerText = selectedGroup.messages.find(_message => _message.id == e.path[1].id).message
@@ -318,8 +336,8 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
 
-function RenderGroups(clear, ...groups) { 
-    RenderElements("data-view", group => `<span style="display: inline">${group.name}</span><span></span><span></span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, false, 
+function RenderGroups(clear, prepend, ...groups) { 
+    RenderElements("data-view", group => `<span style="display: inline">${group.name}</span><span></span><span></span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, prepend, 
     (group, e) => {
         GroupClickHandle(group)
         if (e.target.tagName == "svg") {
@@ -349,7 +367,7 @@ function RenderGroups(clear, ...groups) {
                 }
             }
         }
-    }, () => ["group"], ...groups)
+    }, () => ["group", "flex-set"], ...groups)
 }
 
 function RenderInvites(clear, ...invites) {

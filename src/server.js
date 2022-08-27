@@ -81,14 +81,14 @@ io.on('connection', async socket => {
             case "send":
                 if (!dms.data[data.id]) {
                     let dmKey = LengthUUID(Object.keys(dms.data).length)
-                    dms.data[dmKey] = { messages: {}, creationDate: new Date().toLocaleString(), users: [socket.handshake.auth.userID, data.to], block: null }
+                    dms.data[dmKey] = { messages: {}, creationDate: new Date(), users: [socket.handshake.auth.userID, data.to], block: null }
                     users.data[socket.handshake.auth.userID].dms.push(dmKey)
                     users.data[data.to].dms.push(dmKey)
                     await socket.join(dmKey)
                     await users.write()
                 }
                 const messageID = LengthUUID(Object.keys(dms.data[dmKey].messages).length) 
-                dms.data[dmKey].messages[messageID] = { by: socket.handshake.auth.userID, message: data.message, id: messageID, date: new Date().toLocaleString() }
+                dms.data[dmKey].messages[messageID] = { by: socket.handshake.auth.userID, message: data.message, id: messageID, date: new Date() }
                 break;
 
             case "delete":
@@ -110,7 +110,7 @@ io.on('connection', async socket => {
         if (!data.unblock && dms.data[data.id].block)
             return socket.emit('error', { error: "DM already blocked" })
 
-        dms.data[data.id].block = !data.unblock ? { by: socket.handshake.auth.userID, date: new Date().toLocaleString(), reason: data.reason } : null
+        dms.data[data.id].block = !data.unblock ? { by: socket.handshake.auth.userID, date: new Date(), reason: data.reason } : null
         io.to(data.id).emit('dmSetBlock', { block: dms.data[data.id].block })
         await dms.write()
     })
@@ -131,7 +131,7 @@ io.on('connection', async socket => {
                 if (socket.data.responseUser.groups.length == 70 || Object.keys(users.data[socket.data.user.id]).length == 70)
                     return socket.emit('error', { error: "You cannot create more than 70 groups" })
                     
-                const group = { name: data.name, description: data.description, id: LengthUUID(Object.keys(groups.data).length), users: {}, messages: {}, owner: socket.data.user.id, inviteToken: TokenUUID(), creationDate: new Date().toLocaleString() }
+                const group = { name: data.name, description: data.description, id: LengthUUID(Object.keys(groups.data).length), users: {}, messages: {}, owner: socket.data.user.id, inviteToken: TokenUUID(), creationDate: new Date() }
                 group.users[socket.data.user.id] = { name: socket.data.user.name, id: socket.data.user.id, isOwner: true, isBlocked: false }
                 groups.data[group.id] = group
                 users.data[socket.data.user.id].groups[group.id] = true
@@ -250,7 +250,7 @@ io.on('connection', async socket => {
         let message = undefined
         switch (data.action) {
             case "send":
-                message = { from: { name: socket.data.user.name, id: socket.data.user.id }, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, views: { [socket.data.user.id]: true }, date: new Date().toLocaleString(), }
+                message = { from: { name: socket.data.user.name, id: socket.data.user.id }, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, views: { [socket.data.user.id]: true }, date: new Date(), }
                 groups.data[data.groupID].messages[message.id] = message
                 break
 
@@ -287,7 +287,7 @@ io.on('connection', async socket => {
             }
         }
         delete users.data[socket.data.user.id]
-        logs.data.push({ userID: socket.data.user.id, ip: socket.handshake.address, host: socket.handshake.url, method: "delete", date: new Date().toLocaleString() })
+        logs.data.push({ userID: socket.data.user.id, ip: socket.handshake.address, host: socket.handshake.url, method: "delete", date: new Date() })
         await users.write()
         await logs.write()
         socket.disconnect()
@@ -296,7 +296,7 @@ io.on('connection', async socket => {
     socket.on('disconnect', async () => {
         if (socket.data.user && users.data[socket.data.user.id]) {
             users.data[socket.data.user.id].authToken = undefined
-            logs.data.push({ userID: socket.data.user.id, ip: socket.handshake.address, host: socket.handshake.url, method: "logout", date: new Date().toLocaleString() })
+            logs.data.push({ userID: socket.data.user.id, ip: socket.handshake.address, host: socket.handshake.url, method: "logout", date: new Date() })
             await users.write()
             await logs.write()
         }

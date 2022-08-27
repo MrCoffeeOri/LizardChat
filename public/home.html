@@ -9,7 +9,7 @@
         <title>NodeChat</title>
     </head>
     <body style="overflow: hidden;">
-        <div id="loading-intro">
+        <div id="loading-intro" class="flex-set">
             <img src="assets/node-icon.png" alt="logo">
             <h1>NodeChat</h1>
             <h2>Connecting...</h2>
@@ -23,8 +23,8 @@
             <h2 style="margin: 10px;">Loading invites...</h2>
         </div>
         <div id="newGroup-modal" class="hidden modal">
-            <h1>Create a new group</h1>
-            <form id="newGroupForm">
+            <h1>Create new group</h1>
+            <form id="newGroupForm" class="flex-set">
                 <div>
                     <label for="groupName">Name</label>
                     <input required autocomplete="off" type="text" id="groupName">
@@ -37,8 +37,8 @@
             </form>
         </div>
         <div id="sendInvite-modal" class="hidden modal">
-            <h1>Send an invite</h1>
-            <form id="sendInviteForm">
+            <h1>Send invite</h1>
+            <form id="sendInviteForm" class="flex-set">
                 <div>
                     <label for="userToInvite">User ID</label>
                     <input required autocomplete="off" type="text" id="userToInvite">
@@ -47,8 +47,14 @@
                 <button>Send</button>
             </form>
         </div>
+        <div id="configs-modal" class="hidden modal">
+            <div>
+                <label for="requestMessageAmount">Request message amount:</label>
+                <input type="range" min="10" max="30">
+            </div>
+        </div>
         <aside>
-            <div id="info">
+            <div id="info" class="flex-set">
                 <span id="userName">User Name</span>
                 <div id="invites-notification" class="hidden"></div>
                 <svg id="invites" viewBox="0 0 216 154" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="uniqueElement" x="4.75" y="0.75" width="210.5" height="139.5" rx="15.25" fill="#BBBBBB" stroke="black" stroke-width="1.5"/><path d="M109 72.5L17 1H203L109 72.5Z" fill="#7FB600" stroke="black" stroke-width="1.5"/><path d="M210 136.161L124 61.5" stroke="black"/><path d="M8.72716 135.58L95.4999 61.5" stroke="black"/></svg>
@@ -59,8 +65,8 @@
                     <li id="configs">Configurations</li>
                 </ul>
             </div>
-            <div id="search">
-                <div>
+            <div id="search" class="flex-set">
+                <div class="flex-set">
                     <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="m12 4 1.4 1.4L7.8 11H20v2H7.8l5.6 5.6L12 20l-8-8 8-8z"></path></svg>
                     <input type="text" placeholder="Search using filter">
                 </div>
@@ -74,6 +80,7 @@
             <div id="data-view" class="scrollable"></div>
         </aside>
         <main>
+            <div id="queryData-view"></div>
             <ul id="messageConfigs-view" style="color: white;" class="hidden selection">
                 <li id="edit">Edit</li>
                 <li id="delete">Delete</li>
