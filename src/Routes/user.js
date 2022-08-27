@@ -13,15 +13,15 @@ userRouter
         if (Find(Object.values(users.data), user => user.email == req.body.email) || req.body.email == process.env.EMAIL_USER)
             return res.status(403).json({ error: "Email already used" })
 
+        if (Find(Object.values(cfmTokens.data), token => token.email == req.body.email))
+            return res.status(403).json({ error: "Token already sended to " + req.body.email })
+            
         const confirmationToken = TokenUUID()
         createTransport({
             host: process.env.EMAIL_HOST,
             port: process.env.EMAIL_PORT,
             secure: false,
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.PASSWORD_USER
-            },
+            auth: { user: process.env.EMAIL_USER, pass: process.env.PASSWORD_USER },
             tls: { rejectUnauthorized: false }
         }).sendMail({
             from: process.env.EMAIL_USER,

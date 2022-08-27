@@ -7,6 +7,7 @@ const searchInput = document.querySelector("#search > div > input")
 const messageInp = document.querySelector("#messageInput > input")
 const loadingIntro = document.getElementById("loading-intro")
 const groupInfo = document.getElementById("group-info")
+const inviteNotification = document.getElementById("invites-notification")
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
 let selectedGroup = null, user = null, editingMessage = false, nonViewedMessages = {}
@@ -49,6 +50,8 @@ document.querySelectorAll("#options-view li").forEach(li => li.addEventListener(
 
 document.getElementById("invites").addEventListener('click', e => {
     OpenModal(e)
+    inviteNotification.classList.add("hidden")
+    inviteNotification.innerText = null
     RenderInvites(true, ...user.invites)
 })
 
@@ -155,14 +158,10 @@ socket.on("connect", () => {
 
     socket.on("inviteRecived", invite => {
         user.invites.push(invite)
-        const inviteNotification = document.getElementById("invites-notification")
-        inviteNotification.classList.remove("hidden")
-        inviteNotification.innerText = user.invites.length
-        if (!document.getElementById("invites-modal").classList.contains("hidden")) {
-            RenderInvites(false, invite)
-            inviteNotification.classList.add("hidden")
-            inviteNotification.innerText = null
-        }
+        if (document.getElementById("invites-modal").classList.contains("hidden")) {
+            inviteNotification.classList.remove("hidden")
+            inviteNotification.innerText = user.invites.length
+        } else RenderInvites(false, invite)
     })
 
     socket.on("usersInGroup", response => {

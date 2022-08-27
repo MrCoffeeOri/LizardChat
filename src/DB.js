@@ -20,8 +20,8 @@ export const authTokens = new Low(new JSONFile('database/authTokens.json'))
         const sReverse = array.length - i - 1
 
         if (callback(array[i])) return array[i]
-        if (callback(array[fReverse])) return array[fReverse]
-        if (callback(array[sVerse])) return array[sVerse]
+        if (fReverse >= 0 && callback(array[fReverse])) return array[fReverse]
+        if (sVerse < array.length && callback(array[sVerse])) return array[sVerse]
         if (callback(array[sReverse])) return array[sReverse]
         if (i == fReverse || sVerse == sReverse) return undefined
     }
