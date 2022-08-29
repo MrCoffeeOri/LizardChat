@@ -32,6 +32,7 @@ window.addEventListener("click", e => ShowUniqueElement(`#${e.target.getAttribut
 document.querySelectorAll("#options-view li").forEach(li => li.addEventListener('click', e => {
     if (e.target.id == "sendInvite") {
         const selection = document.getElementById("groupToInvite")
+        selection.innerHTML = null
         user.groups.forEach(group => {
             if (group.owner == user.id) {
                 selection.appendChild(document.createElement("option"))
