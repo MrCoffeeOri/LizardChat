@@ -69,9 +69,7 @@ document.querySelector("#search > div > svg").addEventListener('click', () => {
 searchInput.addEventListener('keydown', async e => {
     if (e.key == "Enter" && e.target.getAttribute("filter")) {
         const data = await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json()
-        if (data.message != "Success")
-            return alert(data.message)
-
+        if (data.message != "Success") return ShowErrorCard(data.message)
         RenderElements("data-view", queryData => `<p class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
             const queryDataViewElement = document.getElementById("queryData-view")
             queryDataViewElement.style.width = "68.15%"
@@ -85,8 +83,7 @@ searchInput.addEventListener('keydown', async e => {
                 queryDataViewElement.innerHTML = null
             }
         }, null, ...data.query)
-    } else if (e.key == "Enter")
-        alert("Please enter a search query")
+    } else if (e.key == "Enter") ShowErrorCard("Enter a search query")
 })
 
 document.querySelectorAll("#filter-view > li").forEach(li => li.addEventListener('click', (e) => {
@@ -116,11 +113,10 @@ document.getElementById("newGroupForm").addEventListener('submit', (e) => {
 
 messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && selectedGroup != null && !selectedGroup.allMessagesLoaded) {
-        console.log(selectedGroup.messages.length)
         const data = (await (await fetch(`/api/group/${selectedGroup.id}/messages/?amount=10&limit=${selectedGroup.messages.length}&userID=${user.id}&authToken=${authToken}`)).json())
         selectedGroup.allMessagesLoaded = data.remaining == 0
-        if (!data.messages.length || data.messages[0].id == selectedGroup.messages[0].id) return
-        RenderMessages(false, true, false, ...(new Array(...data.messages).reverse()))
+        if (!data.messages.length || data.messages[0].id == selectedGroup.messages[0].id) return /*Avoid duplicate messages*/
+        RenderMessages(false, true, false, ...([...data.messages].reverse()))
         data.messages.forEach(message => message.from.id != user.id && !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedGroup.id, id: message.id, action: "view" }))
         messageView.scrollBy(0, document.getElementById(selectedGroup.messages[0].id).offsetTop)
         selectedGroup.messages.unshift(...data.messages)
@@ -158,15 +154,14 @@ socket.on("connect", () => {
 
     socket.on("inviteRecived", invite => {
         user.invites.push(invite)
-        if (document.getElementById("invites-modal").classList.contains("hidden")) {
-            inviteNotification.classList.remove("hidden")
-            inviteNotification.innerText = user.invites.length
-        } else RenderInvites(false, invite)
+        if (!document.getElementById("invites-modal").classList.contains("hidden")) return RenderInvites(false, invite)
+        inviteNotification.classList.remove("hidden")
+        inviteNotification.innerText = user.invites.length
     })
 
     socket.on("usersInGroup", response => {
         user.groups.find(group => group.id == response.id).users = response.users
-        if (response.id == selectedGroup.id) {
+        if (response.id == selectedGroup?.id) {
             selectedGroup.users = response.users
             const usersParsed = selectedGroup.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
             groupInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
@@ -182,7 +177,7 @@ socket.on("connect", () => {
 
             case "leave":
             case "delete":
-                if (response.id == selectedGroup.id) selectedGroup = null
+                if (response.id == selectedGroup?.id) selectedGroup = null
                 messageView.innerHTML = ''
                 messageView.style.display = "none"
                 document.getElementById("messageInput").style.display = "none"
@@ -241,7 +236,7 @@ socket.on("connect", () => {
 
     socket.on("error", response => {
         if (response.error == "Invalid authentication") window.location.href = "/"
-        alert(response.error)
+        ShowErrorCard(response.error)
     })
 
     socket.on("disconnect", () => {
@@ -250,10 +245,10 @@ socket.on("connect", () => {
     })
 })
 
-/*document.querySelector('aside > #info > div > img').addEventListener('click', () => {
- // Config modal
-})
-*/
+function ShowErrorCard(message) {
+    RenderElements("main-view", message => `<span>X</span><p>${message.content}</p><div></div>`, false, false, (_, e) => e.target.tagName == "SPAN" && e.path[1].remove(), null, { id: "error-card", content: message })
+    setTimeout(() => document.getElementById("error-card")?.remove(), 3503)
+}
 
 function ToggleNotification(groupElement, show = true) {
     const lastMessage = nonViewedMessages[groupElement.id] && new String(nonViewedMessages[groupElement.id][nonViewedMessages[groupElement.id].length - 1].message)
@@ -281,7 +276,7 @@ function OpenModal(e) {
     document.getElementById(`${e.target.id || e.path[1].id}-modal`).classList.remove("hidden")
 }
 
-async function GroupClickHandle(group) {
+function GroupClickHandle(group) {
     if (!selectedGroup || selectedGroup.id != group.id) {
         selectedGroup = { ...group, allMessagesLoaded: false }
         const usersParsed = selectedGroup.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')

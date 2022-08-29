@@ -460,7 +460,7 @@ li:hover {
     color: white;
 }
 
-#group-info h1, p { margin: 0; }
+#group-info > h1, p { margin: 0; }
 
 #invites-notification {
     background-color: red;
@@ -503,3 +503,35 @@ li:hover {
     top: 1%;
     left: 1%;
 }
+
+#error-card {
+    animation: ShowModal 650ms ease-in-out;
+    border-radius: .4rem;
+    position: absolute;
+    top: 2%;
+    left: 5%;
+    z-index: 5;
+    color: white;
+    background-color: rgb(124, 11, 11);
+}
+
+#error-card div {
+    animation: CloseCard 3.5s forwards ease-in-out;
+    width: 95%;
+    background-color: white;
+    height: 0.3vh;
+    margin: 0 0 5% 2%;
+}
+
+#error-card p { margin: 10px; }
+
+#error-card span {
+    position: absolute;
+    right: -6%;
+    top: -9%;
+    background-color: rgb(124, 11, 11);
+    border-radius: 50%;
+    padding: 0 6px;
+}
+
+#error-card span:hover { cursor: pointer; }

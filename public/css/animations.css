@@ -7,3 +7,12 @@
     from { transform: scale(0.5); }
     to { transform: scale(1); }
 }
+
+@keyframes CloseCard {
+    from {
+        width: 100%;
+    }
+    to {
+        width: 0;
+    }
+}
