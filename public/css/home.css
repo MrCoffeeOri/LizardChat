@@ -217,6 +217,7 @@ li:hover {
 }
 
 #messages-view .message > span {
+    display: block;
     color: rgb(90, 90, 252);
     text-decoration: underline;
 }
@@ -230,7 +231,7 @@ li:hover {
 
 #messages-view .message .message-header {
     text-align: start;
-    font-size: 0.8pc;
+    font-size: 0.7pc;
     display: inline;
 }
 

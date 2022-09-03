@@ -33,11 +33,10 @@ io.on('connection', async socket => {
         return socket.emit('error', { error: "Invalid authentication" })
 
     socket.data.user = users.data[socket.handshake.auth.userID]
-    socket.data.responseUser = UserParser(socket.data.user)
     await socket.join(Object.keys(socket.data.user.dms))
     await socket.join(Object.keys(socket.data.user.groups))
     await socket.join(socket.handshake.auth.userID)
-    socket.emit('user', socket.data.responseUser)
+    socket.emit('user', UserParser(socket.data.user))
 
     socket.use((packet, next) => {
         if (packet[0] != "auth") {
@@ -47,72 +46,64 @@ io.on('connection', async socket => {
             if (users.data[socket.data.user.id].authToken != socket.handshake.auth.token)
                 return socket.disconnect()
         }
-        if (packet[0] == "group" || packet[0] == "userInGroup") {
+        if (packet[0] == "group" || packet[0] == "userInGroup" || packet[0] == "createInvite") {
             const id = packet[1].id || packet[1].groupID
             if (packet[1].action != "create" && !groups.data[id])
-                socket.emit('error', { error: 'Invalid group' })
-            if (packet[1].action == "rename" || packet[1].action == "delete" && groups.data[id].owner !== socket.data.user.id)
-                socket.emit('error', { error: 'You are not the owner of this group' })
+                return socket.emit('error', { error: 'Invalid group' })
+
+            if ((packet[1].action == "rename" || packet[1].action == "delete" || packet[0] == "createInvite") && groups.data[id].owner !== socket.data.user.id)
+                return socket.emit('error', { error: 'You are not the owner of this group' })
         }
         next()
     })
 
-    socket.on('dmMessage', async data => {
-        if (!data.to || !users.data[data.to])
-            return socket.emit('error', { error: "No DM specified/found" })
+    socket.on('DM', async data => {
+        if (data.action != "create" && (!data.id || !dms.data[data.id]))
+            return socket.emit('error', { error: "No DM specified or found" })
 
-        if (data.action != "delete" && !data.message)
-            return socket.emit('error', { error: "No message specified" })
-
-        if (data.to == socket.handshake.auth.userID)
-            return socket.emit('error', { error: "You cannot send messages to yourself" })
-
-        if (data.action == "delete" || data.action == "edit") {
-            if (!dms.data[data.id])
-                return socket.emit('error', { error: "No DM found" })
-
-            if (!dms.data[data.id].messages[data.messageID])
-                return socket.emit('error', { error: "No message found" })
-
-            if (dms.data[data.id].messages[data.messageID].by != socket.handshake.auth.userID)
-                return socket.emit('error', { error: `You cannot ${data.action} messages that you did not send` })
-        }
+        let parsedDM = undefined
+        let block = undefined
         switch (data.action) {
-            case "send":
-                if (!dms.data[data.id]) {
-                    let dmKey = LengthUUID(Object.keys(dms.data).length)
-                    dms.data[dmKey] = { messages: {}, creationDate: new Date(), users: [socket.handshake.auth.userID, data.to], block: null }
-                    users.data[socket.handshake.auth.userID].dms.push(dmKey)
-                    users.data[data.to].dms.push(dmKey)
-                    await socket.join(dmKey)
-                    await users.write()
-                }
-                const messageID = LengthUUID(Object.keys(dms.data[dmKey].messages).length) 
-                dms.data[dmKey].messages[messageID] = { by: socket.handshake.auth.userID, message: data.message, id: messageID, date: new Date() }
-                break;
+            case "create":
+            if (!data.userID || !users.data[data.userID])
+                return socket.emit('error', { error: "Invalid user" })
 
-            case "delete":
-                delete dms.data[data.id].messages[data.messageID]
+            for (const dmID in users.data[socket.data.user.id].dms)
+                if (Object.hasOwnProperty.call(users.data[socket.data.user.id].dms, dmID) && dms.data[dmID].users[data.userID])
+                    return socket.emit('error', { error: "DM already created" })
+
+            const dmID = LengthUUID(Object.keys(dms.data).length)
+            const otherUserSocket = (await io.sockets.in(data.userID).fetchSockets())[0]
+            dms.data[dmID] = { id: dmID, users: { [socket.data.user.id]: { name: socket.data.user.name, id: socket.data.user.id }, [data.userID]: { name: users.data[data.userID].name, id: data.userID } }, creationDate: new Date(), messages: {} }
+            users.data[socket.data.user.id].dms[dmID] = true
+            users.data[data.userID].dms[dmID] = true
+            await socket.join(dmID)
+            otherUserSocket && otherUserSocket.join(dmID)
+            parsedDM = ChatParser(dmID)
+            data.id = dmID
+            await users.write()
+            break;
+            
+            case "leave":
+                for (const userID in dms.data[data.id].users)
+                    if (Object.hasOwnProperty.call(dms.data[data.id].users, userID))
+                        delete users.data[userID].dms[data.id]
+
+                delete dms.data[data.id]
+                await users.write()
                 break;
-                
-            case "edit":
-                dms.data[data.id].messages[data.messageID].message = data.message
+                    
+            case "setBlock":
+                if (data.block && dms.data[data.id].block)
+                    return socket.emit('error', { error: "DM already blocked" })
+
+                dms.data[data.id].block = data.block ? { by: socket.handshake.auth.userID, date: new Date(), reason: data.reason } : undefined
+                block = dms.data[data.id].block
                 break;
         }
-        io.to(data.id).emit('dmMessage', { action: data.action, id: data.messageID, content: data.action != "delete" ? data.message : undefined })
         await dms.write()
-    })
-
-    socket.on('dmSetBlock', async data => {
-        if (!data.id || !dms.data[data.id])
-            return socket.emit('error', { error: "No DM specified/found" })
-
-        if (!data.unblock && dms.data[data.id].block)
-            return socket.emit('error', { error: "DM already blocked" })
-
-        dms.data[data.id].block = !data.unblock ? { by: socket.handshake.auth.userID, date: new Date(), reason: data.reason } : null
-        io.to(data.id).emit('dmSetBlock', { block: dms.data[data.id].block })
-        await dms.write()
+        io.to(data.id).emit("DM", { id: data.id, action: data.action, dm: parsedDM, block })
+        data.action == "leave" && io.socketsLeave(data.id)
     })
 
     socket.on('group', async data => {
@@ -123,12 +114,12 @@ io.on('connection', async socket => {
                         delete users.data[userID].groups[data.id]
                 
                 delete groups.data[data.id]
-                io.to(data.id).emit('groupEvent', { id: data.id, action: data.action })
+                io.to(data.id).emit('group', { id: data.id, action: data.action })
                 io.socketsLeave(data.id)
                 break
 
             case "create":
-                if (socket.data.responseUser.groups.length == 70 || Object.keys(users.data[socket.data.user.id]).length == 70)
+                if (Object.keys(users.data[socket.data.user.id]).length == 70)
                     return socket.emit('error', { error: "You cannot create more than 70 groups" })
                     
                 const group = { name: data.name, description: data.description, id: LengthUUID(Object.keys(groups.data).length), users: {}, messages: {}, owner: socket.data.user.id, inviteToken: TokenUUID(), creationDate: new Date() }
@@ -136,12 +127,12 @@ io.on('connection', async socket => {
                 groups.data[group.id] = group
                 users.data[socket.data.user.id].groups[group.id] = true
                 await socket.join(group.id)
-                socket.emit('groupEvent', { group: {...group, messages: [], users: [{ name: socket.data.user.name, id: socket.data.user.id, isOwner: true, isBlocked: false }]}, action: data.action })
+                socket.emit('group', { group: {...group, messages: [], users: [{ name: socket.data.user.name, id: socket.data.user.id, isOwner: true, isBlocked: false }]}, action: data.action })
                 break
             
             case "rename":
                 groups.data[data.id].name = data.name
-                io.to(data.id).emit('groupEvent', { id: data.id, name: data.name, action: "rename" })
+                io.to(data.id).emit('group', { id: data.id, name: data.name, action: "rename" })
                 break
 
             case "join":
@@ -161,7 +152,7 @@ io.on('connection', async socket => {
                 delete groups.data[data.id].users[socket.data.user.id]
                 delete users.data[socket.data.user.id].groups[data.id]
                 io.to(data.id).emit('usersInGroup', { users: Object.values(groups.data[data.id].users), id: data.id })
-                socket.emit('groupEvent', { id: data.id, name: data.name, action: "leave" })
+                socket.emit('group', { id: data.id, name: data.name, action: "leave" })
                 await socket.leave(data.id)
                 break
         }
@@ -170,38 +161,30 @@ io.on('connection', async socket => {
     })
 
     socket.on('userInGroup',  async (data) => {
-        if (!groups.data[data.groupID].users[data.userToInviteID] || data.userToInviteID == socket.data.user.id)
+        if (!groups.data[data.groupID].users[data.userID] || data.userID == socket.data.user.id)
             return socket.emit('error', { error: 'Invalid user' })
 
         switch (data.action) {
-            case "block":
-                groups.data[data.groupID].users[data.userToInviteID].isBlocked = true
-                break;
-
             case "unblock":
-                groups.data[data.groupID].users[data.userToInviteID].isBlocked = false
+            case "block":
+                groups.data[data.groupID].users[data.userID].isBlocked = data.action == "block"
                 break;
 
             case "kick":
-                delete groups.data[data.groupID].users[data.userToInviteID]
-                delete users.data[data.userToInviteID].groups[data.groupID]
+                delete groups.data[data.groupID].users[data.userID]
+                delete users.data[data.userID].groups[data.groupID]
                 break;
-
-            default:
-                return socket.emit('error', { error: 'Invalid action' })
         }
         await users.write()
         await groups.write()
         socket.to(data.groupID).emit('usersInGroup', { users: groups.data[data.groupID].users, id: data.groupID, action: data.action })
+        if (data.action == "kick") {
+            const userToKickSocket = (await io.in(data.groupID).fetchSockets()).find(socket => socket.data.user.id == data.userID)
+            userToKickSocket && userToKickSocket.leave(data.groupID)
+        }
     })
 
     socket.on('createInvite', async (data) => {
-        if (!socket.data.user.groups[data.groupID])
-            return socket.emit("error", { error: 'User is not in the group' })
-
-        if (socket.data.user.id != groups.data[data.groupID].owner)
-            return socket.emit("error", { error: 'You are not the owner of this group' })
-            
         if (!users.data[data.to] || data.to === socket.data.user.id)
             return socket.emit("error", { error: 'Invalid user to invite' })
 
@@ -222,7 +205,7 @@ io.on('connection', async socket => {
         if (!groupID || data.token != groups.data[groupID].inviteToken)
             return socket.emit('error', { error: 'Invalid invite' })
 
-        if (data.action === "accept") {
+        if (data.action == "accept") {
             users.data[socket.data.user.id].groups[groupID] = true
             groups.data[groupID].users[socket.data.user.id] = { name: users.data[socket.data.user.id].name, id: socket.data.user.id, isOwner: false, isBlocked: false }
             io.to(groupID).emit('usersInGroup', { users: Object.values(groups.data[groupID].users), id: groupID })
@@ -230,53 +213,53 @@ io.on('connection', async socket => {
             await groups.write()
         }
         delete users.data[socket.data.user.id].invites[data.id]
-        socket.emit("user", UserParser(users.data[socket.data.user.id]))
         await users.write()
+        socket.emit("inviteHandled",{ inviteID: data.id, chat: data.action == "accept" ? ChatParser(groupID) : undefined })
     })
 
     socket.on('message', async (data) => {
-        if (!socket.data.user.groups[data.groupID])
-            return socket.emit("error", { error: 'Invalid group' })
+        const group = dms.data[data.chatID] || groups.data[data.chatID]
+        if (!group)
+            return socket.emit("error", { error: `Invalid chat` })
+        
+        if (group.isBlocked || group.block)
+            return socket.emit("error", { error: `You are blocked from the chat` })
 
-        if (groups.data[data.groupID].users[socket.data.user.id].isBlocked)
-            return socket.emit("error", { error: 'You are blocked from this group' })
+        if (data.action != "send" && (!data.id || !group.messages[data.id]))
+            return socket.emit("error", { error: 'Message deleted or missing ID' })
 
-        if (data.action != "send" && !data.id && !groups.data[data.groupID].messages[data.id])
-            return socket.emit("error", { error: 'Message ID is missing or does not exist' })
-
-        if (data.action != "send" && data.action != "view" && groups.data[data.groupID].messages[data.id].from.id != socket.data.user.id)
+        if (data.action == "edit" && data.action == "delete" && group.messages[data.id].from.id != socket.data.user.id)
             return socket.emit("error", { error: 'You are not the owner of this message' })
 
         let message = undefined
         switch (data.action) {
             case "send":
-                message = { from: { name: socket.data.user.name, id: socket.data.user.id }, id: LengthUUID(Object.keys(groups.data[data.groupID].messages).length), message: data.message, views: { [socket.data.user.id]: true }, date: new Date(), }
-                groups.data[data.groupID].messages[message.id] = message
+                message = { from: { name: socket.data.user.name, id: socket.data.user.id }, id: LengthUUID(Object.keys(group.messages).length), message: data.message, views: { [socket.data.user.id]: true }, date: new Date(), }
+                group.messages[message.id] = message
                 break
 
             case "delete":
-                delete groups.data[data.groupID].messages[data.id]
+                delete group.messages[data.id]
                 break
 
             case "edit":
-                groups.data[data.groupID].messages[data.id].message = data.message
-                message = groups.data[data.groupID].messages[data.id]
+                group.messages[data.id].message = data.message
+                message = group.messages[data.id]
                 break
 
             case "view":
-                if (groups.data[data.groupID].messages[data.id].views[socket.data.user.id])
+                if (group.messages[data.id].views[socket.data.user.id])
                     return socket.emit("error", { error: 'User has already viewed this message' })
 
-                if (groups.data[data.groupID].messages[data.id].from.id == socket.data.user.id)
+                if (group.messages[data.id].from.id == socket.data.user.id)
                     return socket.emit("error", { error: 'User cannot view his own message' })
 
-                groups.data[data.groupID].messages[data.id].views[socket.data.user.id] = true
-                message = groups.data[data.groupID].messages[data.id]
+                group.messages[data.id].views[socket.data.user.id] = true
+                message = group.messages[data.id]
                 break
         }
-
-        io.to(data.groupID).emit("message", { message: message && { ...message, views: Object.keys(message.views) }, groupID: data.groupID, action: data.action, id: data.id })
         await groups.write()
+        io.to(data.chatID).emit("message", { message: message && { ...message, views: Object.keys(message.views) }, chatID: data.chatID, action: data.action, id: data.id })
     })
 
     socket.on('deleteUser', async () => {
@@ -309,29 +292,27 @@ function UserParser(rawUser) {
         name: rawUser.name,
         id: rawUser.id,
         email: rawUser.email,
-        dms: [],
-        groups: [],
+        chats: [],
         invites: Object.values(rawUser.invites)
     }
-    for (const groupID in rawUser.groups) {
-        if (Object.hasOwnProperty.call(rawUser.groups, groupID)) {
-            const messages = Object.values(groups.data[groupID].messages)
-            let filteredMessages = []
-            for (let i = 0; i < (messages.length < 10 ? messages.length : 10); i++)
-                filteredMessages.unshift({...messages[messages.length - i - 1], views: Object.keys(messages[messages.length - i - 1].views)})
-                
-            responseUser.groups.push({ 
-                ...groups.data[groupID],
-                remainingMessages: Math.max(messages.length - 10, 0),
-                users: Object.values(groups.data[groupID].users),
-                messages: filteredMessages,
-                inviteToken: groups.data[groupID].owner == rawUser.id ? groups.data[groupID].inviteToken : undefined
-            });
-        }
-    }
-    for (const dmID in rawUser.dms)
-        if (Object.hasOwnProperty.call(rawUser.dms, key))
-            responseUser.dms.push(dms.data[dmID])
+    for (const groupID in rawUser.groups) Object.hasOwnProperty.call(rawUser.groups, groupID) && responseUser.chats.push(ChatParser(groupID, rawUser.id));
+    for (const dmID in rawUser.dms) Object.hasOwnProperty.call(rawUser.dms, dmID) && responseUser.chats.push(ChatParser(dmID, rawUser.id));
 
     return responseUser
+}
+
+function ChatParser(id, userID) {
+    const chat = groups.data[id] || dms.data[id]
+    const messages = Object.values(chat.messages)
+    let filteredMessages = []
+    for (let i = 0; i < (messages.length < 10 ? messages.length : 10); i++)
+        filteredMessages.unshift({...messages[messages.length - i - 1], views: Object.keys(messages[messages.length - i - 1].views)})
+        
+    return { 
+        ...chat,
+        remainingMessages: Math.max(messages.length - 10, 0),
+        users: Object.values(chat.users),
+        messages: filteredMessages,
+        inviteToken: groups.data[id] && groups.data[id].owner == userID ? groups.data[id].inviteToken : undefined
+    }
 }

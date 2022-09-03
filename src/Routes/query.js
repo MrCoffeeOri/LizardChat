@@ -21,7 +21,7 @@ queryRouter.get("/:table/:limit/:chars", async (req, res) => {
             query.push(item.isPrivate ? 
             { id: item.id, name: item.name, creationDate: item.creationDate } 
             : 
-            { id: item.id, name: item.name, creationDate: item.creationDate, inviteToken: item.inviteToken, groups: item.groups && Object.keys(item.groups).map(groupID => ({ name: groups.data[groupID].name, creationDate: groups.data[groupID].creationDate })), members: item.members && Object.values(item.members) })
+            { id: item.id, name: item.name, creationDate: item.creationDate, inviteToken: item.inviteToken, groups: item.groups && Object.keys(item.groups).map(groupID => ({ name: groups.data[groupID].name, creationDate: groups.data[groupID].creationDate })), users: item.users && Object.values(item.users) })
         }
     })
     if (query.length <= 0)
