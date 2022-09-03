@@ -35,8 +35,14 @@ window.addEventListener("click", e => {
 document.querySelectorAll("#options-view li").forEach(li => li.addEventListener('click', e => {
     if (e.target.id == "sendInvite") {
         const selection = document.getElementById("groupToInvite")
+<<<<<<< HEAD
         user.chats.forEach(chat => {
             if (chat?.owner == user.id) {
+=======
+        selection.innerHTML = null
+        user.groups.forEach(group => {
+            if (group.owner == user.id) {
+>>>>>>> d01c4835a3bc7fbaa7e0406c5a8125408e4cf7ef
                 selection.appendChild(document.createElement("option"))
                 selection.lastChild.value = chat.id
                 selection.lastChild.innerHTML = chat.name
@@ -322,7 +328,11 @@ function GroupClickHandle(group) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
+<<<<<<< HEAD
     RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
+=======
+    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message}</p>${message.message.length > 200 ? `<span style="display: block">See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? new Date(message.date).toLocaleTimeString() : message.date.toLocaleDateString()}</p>`, clear, prepend, 
+>>>>>>> d01c4835a3bc7fbaa7e0406c5a8125408e4cf7ef
         (message, e) => {
             if (e.target.tagName == "SPAN") {
                 e.target.previousElementSibling.innerText = selectedChat.messages.find(_message => _message.id == e.path[1].id).message
