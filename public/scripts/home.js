@@ -72,8 +72,8 @@ document.querySelector("#search > div > svg").addEventListener('click', () => {
 
 searchInput.addEventListener('keydown', async e => {
     if (e.key == "Enter" && e.target.getAttribute("filter")) {
-        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json()).query.filter(rd => rd.id != user.id && (user.chats.length > 0 && !user.chats.some(chat => chat.id == rd.id)))
-        if (query.length == 0) return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
+        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json())?.query.filter(rd => rd.id != user.id && (user.chats.length > 0 && !user.chats.some(chat => chat.id == rd.id)))
+        if (!query.length || query.length == 0) return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
         RenderElements("data-view", queryData => `<p class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
             const queryDataViewElement = document.getElementById("queryData-view")
             const closeView = () => {
