@@ -43,12 +43,14 @@ io.on('connection', async socket => {
             if (!socket.data.user)
                 return next(new Error('No authentication provided'))
 
-            if (users.data[socket.data.user.id].authToken != socket.handshake.auth.token)
+            if (users.data[socket.data.user.id].authToken != socket.handshake.auth.token) {
+                users.data[socket.data.user.id].otherInstance = true
                 return socket.disconnect()
+            }
         }
         if (packet[0] == "group" || packet[0] == "userInGroup" || packet[0] == "createInvite") {
             const id = packet[1].id || packet[1].groupID
-            if (packet[1].action != "create" && !groups.data[id])
+            if ((packet[1].action != "create" || packet[0] == "createInvite") && !groups.data[id])
                 return socket.emit('error', { error: 'Invalid group' })
 
             if ((packet[1].action == "rename" || packet[1].action == "delete" || packet[0] == "createInvite") && groups.data[id].owner !== socket.data.user.id)
@@ -258,7 +260,7 @@ io.on('connection', async socket => {
                 message = group.messages[data.id]
                 break
         }
-        await groups.write()
+        dms.data[data.chatID] ? await dms.write() : await groups.write()
         io.to(data.chatID).emit("message", { message: message && { ...message, views: Object.keys(message.views) }, chatID: data.chatID, action: data.action, id: data.id })
     })
 
@@ -277,12 +279,13 @@ io.on('connection', async socket => {
     })
 
     socket.on('disconnect', async () => {
-        if (socket.data.user && users.data[socket.data.user.id]) {
+        if (socket.data.user && users.data[socket.data.user.id] && !users.data[socket.data.user.id].otherInstance) {
             users.data[socket.data.user.id].authToken = undefined
             logs.data.push({ userID: socket.data.user.id, ip: socket.handshake.address, host: socket.handshake.url, method: "logout", date: new Date() })
-            await users.write()
             await logs.write()
         }
+        users.data[socket.data.user.id].otherInstance = false
+        await users.write()
     })
 })
 server.listen(port)

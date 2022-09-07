@@ -10,6 +10,7 @@ const groupInfo = document.getElementById("group-info")
 const inviteNotification = document.getElementById("invites-notification")
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
+const messageParse = message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${new String((message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message)).replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}">${url}</a>`)}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`
 let selectedChat = null, user = null, editingMessage = false, nonViewedMessages = {}
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
@@ -27,6 +28,8 @@ if (new URLSearchParams(window.location.search).get('firstTime')) {
 
 document.querySelector("#messageInput > svg").addEventListener('click', SendMessageHandle)
 messageInp.addEventListener("keydown", e => e.key == "Enter" && SendMessageHandle())
+messageInp.addEventListener('input', e => e.target.value == '' || e.target.value == ' ' || e.target.value == undefined || e.target.value == null ? document.querySelector("#messageInput > svg").classList.add("hidden") : document.querySelector("#messageInput > svg").classList.remove("hidden"))
+
 window.addEventListener("click", e => {
     ["#filter-view", "#options-view", "#messageConfigs-view", "#groupConfigs-view"].forEach(other => document.querySelector(other)?.classList.add("hidden"))
     document.querySelector(`#${e.target.getAttribute("viewid") || e.path[1].getAttribute("viewid")}-view`)?.classList.toggle("hidden")
@@ -43,19 +46,16 @@ document.querySelectorAll("#options-view li").forEach(li => li.addEventListener(
                 selection.lastChild.innerHTML = chat.name
             }
         })
-        if (selection.children.length == 0) {
-            selection.innerHTML = "<option value=''>User has no groups to invite</option>"
-            selection.disabled = true
-            return
-        }
+        selection.disabled = selection.children.length == 0
+        selection.innerHTML = selection.children.length == 0 ? "<option value=''>User has no groups to invite</option>" : selection.innerHTML
     }
     OpenModal(e)
 }))
 
 document.getElementById("invites").addEventListener('click', e => {
-    OpenModal(e)
     inviteNotification.classList.add("hidden")
     inviteNotification.innerText = null
+    OpenModal(e)
     RenderInvites(true, ...user.invites)
 })
 
@@ -72,9 +72,9 @@ document.querySelector("#search > div > svg").addEventListener('click', () => {
 
 searchInput.addEventListener('keydown', async e => {
     if (e.key == "Enter" && e.target.getAttribute("filter")) {
-        const data = await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json()
-        if (data.message != "Success") return ShowErrorCard(data.message)
-        RenderElements("data-view", queryData => queryData.id == user.id || user.chats.some(chat => chat.id == queryData.id) ?  '' : `<p class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
+        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json()).query.filter(rd => rd.id != user.id && (user.chats.length > 0 && !user.chats.some(chat => chat.id == rd.id)))
+        if (query.length == 0) return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
+        RenderElements("data-view", queryData => `<p class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
             const queryDataViewElement = document.getElementById("queryData-view")
             const closeView = () => {
                 queryDataViewElement.style.width = 0
@@ -93,7 +93,7 @@ searchInput.addEventListener('keydown', async e => {
                 searchInput.value = ''
                 searchInput.dispatchEvent(new Event("input"))
             }
-        }, null, ...data.query)
+        }, null, ...query)
     } else if (e.key == "Enter") ShowErrorCard("Enter a search query")
 })
 
@@ -104,13 +104,6 @@ document.querySelectorAll("#filter-view > li").forEach(li => li.addEventListener
     searchInput.placeholder = 'Search using filter: ' + e.target.id
     searchInput.setAttribute('filter', e.target.id)
 }))
-
-messageInp.addEventListener('input', (e) => {
-    if (e.target.value == '' || e.target.value == ' ' || e.target.value == undefined || e.target.value == null)
-        document.querySelector("#messageInput > svg").classList.add("hidden")
-    else
-        document.querySelector("#messageInput > svg").classList.remove("hidden")
-})
 
 document.getElementById("newGroupForm").addEventListener('submit', (e) => {
     e.preventDefault()
@@ -150,7 +143,6 @@ socket.on("connect", () => {
     socket.on("user", response => {
         user = new Object(response)
         user.chats.sort((a, b) => {
-            if (a.messages.length == 0) return 0
             const aDate = new Date(a.messages[a.messages.length - 1].date)
             const bDate = new Date(b.messages[b.messages.length - 1].date)
             return aDate > bDate ? -1 : aDate < bDate ? 1 : aDate == bDate ? 0 : undefined
@@ -208,8 +200,8 @@ socket.on("connect", () => {
                 break;
         
             case "edit":
-                chat.messages[chat.messages.findIndex(message => message.id == response.message.id)] = response.message.message
-                if (selectedChat?.id == response.chatID) document.querySelector(`#${response.id} > .message-content`).innerText = response.message.message
+                chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].message = response.message.message
+                if (selectedChat?.id == response.chatID) document.getElementById(response.id).innerHTML = messageParse(response.message)
                 break;
 
             case "delete":
@@ -323,7 +315,7 @@ function GroupClickHandle(group) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
+    RenderElements(messageView.id, messageParse, clear, prepend, 
         (message, e) => {
             if (e.target.tagName == "SPAN") {
                 e.target.previousElementSibling.innerText = selectedChat.messages.find(_message => _message.id == e.path[1].id).message

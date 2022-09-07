@@ -5,11 +5,12 @@
     --main-color-theme: rgb(100, 100, 100);
     --main-lighten-color-theme: rgb(128, 128, 128);
     --main-darken-color-theme: rgb(84, 84, 84);
-    --third-color-theme: rgb(41, 41, 41);
-    --third-lighten-color-theme: rgb(63, 63, 63);
     --second-color-theme: #7fb600;
     --second-darken-color-theme: #5c8300;
+    --third-color-theme: rgb(41, 41, 41);
+    --third-lighten-color-theme: rgb(63, 63, 63);
     --login-input-active: rgb(124, 124, 124);
+    --error-card-color: rgb(124, 11, 11);
 }
 
 * { 
