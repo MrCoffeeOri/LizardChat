@@ -218,6 +218,11 @@ li:hover {
     text-decoration: underline;
 }
 
+#messages-view .message img {
+    width: 100%;
+    height: 70%;
+}
+
 #messages-view .message .message-time {
     text-align: end;
     float: right;
