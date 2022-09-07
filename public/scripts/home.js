@@ -317,7 +317,10 @@ function GroupClickHandle(group) {
 function RenderMessages(clear, prepend, scroll, ...messages) {
     RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${parseMessageContent(message, true)}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
         (message, e) => {
-            if (e.target.tagName != "SPAN" && e.target.classList.contains("user") || e.path[1].classList.contains("user")) {
+            if (e.target.tagName == "SPAN") {
+                e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id), false)
+                e.target.remove()
+            } else if (e.target.classList.contains("user") || e.path[1].classList.contains("user")) {
                 e.target.setAttribute("viewID", "messageConfigs")
                 const menu = document.getElementById("messageConfigs-view")
                 menu.style.top = e.pageY + "px"
@@ -334,9 +337,6 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                         messageInp.focus()
                     }
                 }
-            } else {
-                e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id), false)
-                e.target.remove()
             }
         }, message => ["message", message.from.id == user.id  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
