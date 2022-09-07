@@ -10,7 +10,7 @@ const groupInfo = document.getElementById("group-info")
 const inviteNotification = document.getElementById("invites-notification")
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
-const parseMessage = (message, limit = true) => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${(message.message.length > 200 && limit ? message.message.slice(0, 200) + '...' : message.message).replaceAll(/(https?:\/\/[^\s]+)/g, url => url.match(/(\.png|\.webp|\.gif|\.jpg)\b/g) ? `<img src="${url}"/>` : url.match(/youtube\.com\/watch\?v=[a-zA-Z0-9]+/g) ? `<iframe width="100%" height="200" src="https://www.youtube.com/embed/${url.split('=')[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${url}" target="_blank">${url}</a>`)}</p>${message.message.length > 200 && limit ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`
+const parseMessageContent = (message, limit = true) => (message.message.length > 200 && limit ? message.message.slice(0, 200) + '...' : message.message).replaceAll(/(https?:\/\/[^\s]+)/g, url => url.match(/(\.png|\.webp|\.gif|\.jpg)\b/g) ? `<img src="${url}"/>` : url.match(/youtube\.com\/watch\?v=[a-zA-Z0-9]+/g) ? `<iframe width="100%" height="200" src="https://www.youtube.com/embed/${url.split('=')[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${url}" target="_blank">${url}</a>`)
 let selectedChat = null, user = null, editingMessage = false, nonViewedMessages = {}
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
@@ -201,7 +201,7 @@ socket.on("connect", () => {
         
             case "edit":
                 chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].message = response.message.message
-                if (selectedChat?.id == response.chatID) document.getElementById(response.id).innerHTML = parseMessage(response.message, false)
+                if (selectedChat?.id == response.chatID) document.querySelector(`#${response.id} .message-content`).innerHTML = parseMessageContent(response.message, false)
                 break;
 
             case "delete":
@@ -315,7 +315,7 @@ function GroupClickHandle(group) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, parseMessage, clear, prepend, 
+    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${parseMessageContent(message, true)}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
         (message, e) => {
             if (e.target.tagName != "SPAN") {
                 e.target.setAttribute("viewID", "messageConfigs")
@@ -334,7 +334,10 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                         messageInp.focus()
                     }
                 }
-            } else e.path[1].innerHTML = parseMessage(selectedChat.messages.find(_message => _message.id == e.path[1].id), false)
+            } else {
+                e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id), false)
+                e.target.remove()
+            }
         }, message => ["message", message.from.id == user.id  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
