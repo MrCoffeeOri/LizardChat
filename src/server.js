@@ -230,7 +230,7 @@ io.on('connection', async socket => {
         if (data.action != "send" && (!data.id || !group.messages[data.id]))
             return socket.emit("error", { error: 'Message deleted or missing ID' })
 
-        if (data.action == "edit" && data.action == "delete" && group.messages[data.id].from.id != socket.data.user.id)
+        if (data.action == "edit" || data.action == "delete" && group.messages[data.id].from.id != socket.data.user.id)
             return socket.emit("error", { error: 'You are not the owner of this message' })
 
         let message = undefined
