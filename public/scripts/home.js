@@ -10,7 +10,7 @@ const groupInfo = document.getElementById("group-info")
 const inviteNotification = document.getElementById("invites-notification")
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
-const messageParse = message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${(message.message.length > 200 ? message.message.slice(0, 200) + '...' : message.message).replace(/(https?:\/\/[^\s]+)/g, url => message.message.match(/(\.png|\.webp|\.gif|\.jpg)\b/g) ? `<img src="${url}"/>` : `<a href="${url}">${url}</a>`)}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`
+const parseMessage = (message, limit = true) => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${(message.message.length > 200 && limit ? message.message.slice(0, 200) + '...' : message.message).replaceAll(/(https?:\/\/[^\s]+)/g, url => message.message.match(/(\.png|\.webp|\.gif|\.jpg)\b/g) ? `<img src="${url}"/>` : `<a href="${url}">${url}</a>`)}</p>${message.message.length > 200 && limit ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`
 let selectedChat = null, user = null, editingMessage = false, nonViewedMessages = {}
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
@@ -201,7 +201,7 @@ socket.on("connect", () => {
         
             case "edit":
                 chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].message = response.message.message
-                if (selectedChat?.id == response.chatID) document.getElementById(response.id).innerHTML = messageParse(response.message)
+                if (selectedChat?.id == response.chatID) document.getElementById(response.id).innerHTML = parseMessage(response.message, false)
                 break;
 
             case "delete":
@@ -315,12 +315,9 @@ function GroupClickHandle(group) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, messageParse, clear, prepend, 
+    RenderElements(messageView.id, parseMessage, clear, prepend, 
         (message, e) => {
-            if (e.target.tagName == "SPAN") {
-                e.target.previousElementSibling.innerText = selectedChat.messages.find(_message => _message.id == e.path[1].id).message
-                e.target.remove()
-            } else {
+            if (e.target.tagName != "SPAN") {
                 e.target.setAttribute("viewID", "messageConfigs")
                 const menu = document.getElementById("messageConfigs-view")
                 menu.style.top = e.pageY + "px"
@@ -337,7 +334,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                         messageInp.focus()
                     }
                 }
-            }
+            } else e.path[1].innerHTML = parseMessage(selectedChat.messages.find(_message => _message.id == e.path[1].id), false)
         }, message => ["message", message.from.id == user.id  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
