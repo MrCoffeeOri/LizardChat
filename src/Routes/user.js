@@ -4,8 +4,6 @@ import { logs, users, cfmTokens, Find } from '../DB.js'
 import { LengthUUID, TokenUUID } from "../UUID.js"
 
 export const userRouter = Router()
-
-userRouter
     .post("/create", async (req, res) => {
         if (!req.body.name || req.body.name == ' ' && !req.body.password || req.body.password == ' ', !req.body.email || req.body.email == ' ')
             return res.status(400).json({ error: "User data is incorrect" })

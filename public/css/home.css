@@ -257,7 +257,7 @@ li:hover {
 
 #messageInput input {
     width: 40vw;
-    height: 4vh;
+    height: 5vh;
 }
 
 #background {
@@ -311,9 +311,7 @@ li:hover {
     color: white;
 }
 
-#intro-modal button:active {
-    transform: scale(0.9);
-}
+#intro-modal button:active { transform: scale(0.9); }
 
 #messages-placeholder {
     height: 100vh;
@@ -321,9 +319,7 @@ li:hover {
     text-align: center;
 }
 
-#messages-placeholder h1 {
-    color: var(--second-color-theme);
-}
+#messages-placeholder h1 { color: var(--second-color-theme); }
 
 #messages-placeholder img {
     margin-top: 35vh;

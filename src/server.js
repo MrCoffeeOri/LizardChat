@@ -3,11 +3,11 @@ import cors from 'cors'
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
 import { createServer } from 'http'
-import { users, logs, groups, dms, cfmTokens, Find } from './DB.js'
+import { users, logs, groups, dms, cfmTokens } from './DB.js'
 import { LengthUUID, TokenUUID } from './UUID.js'
 import { userRouter } from './Routes/user.js'
 import { queryRouter } from './Routes/query.js'
-import { groupRouter } from './Routes/group.js'
+import { chatRouter } from './Routes/chat.js'
 
 const app = express()
 const server = createServer(app)
@@ -23,7 +23,7 @@ await cfmTokens.read()
 config()
 app.use(json())
 app.use(cors())
-app.use("/api/group", groupRouter)
+app.use("/api/chat", chatRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
 app.use(express.static('public'))

@@ -117,14 +117,13 @@ document.getElementById("newGroupForm").addEventListener('submit', (e) => {
 
 messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && selectedChat != null && !selectedChat.allMessagesLoaded) {
-        const data = (await (await fetch(`/api/group/${selectedChat.id}/messages/?amount=10&limit=${selectedChat.messages.length}&userID=${user.id}&authToken=${authToken}`)).json())
+        const data = (await (await fetch(`/api/chat/${selectedChat.id}/messages/?amount=10&limit=${selectedChat.messages.length}&userID=${user.id}&authToken=${authToken}`)).json())
         selectedChat.allMessagesLoaded = data.remaining == 0
-        if (!data.messages.length || data.messages[0].id == selectedChat.messages[0].id) return /*Avoid duplicate messages*/
-        RenderMessages(false, true, false, ...([...data.messages].reverse()))
         data.messages.forEach(message => message.from.id != user.id && !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedChat.id, id: message.id, action: "view" }))
         messageView.scrollBy(0, document.getElementById(selectedChat.messages[0].id).offsetTop)
         selectedChat.messages.unshift(...data.messages)
-        user.chats.find(group => group.id == selectedChat.id).messages = selectedChat.messages
+        user.chats.splice(user.chats.findIndex(group => group.id == selectedChat.id), 1, selectedChat)
+        RenderMessages(false, true, false, ...(data.messages.reverse()))
     }
 })
 
@@ -297,7 +296,7 @@ function OpenModal(e) {
 
 function ChatClickHandle(chat) {
     if (!selectedChat || selectedChat.id != chat.id) {
-        selectedChat = { ...chat, allMessagesLoaded: false }
+        selectedChat = chat
         const usersParsed = selectedChat.users.map(_user => _user.id == user.id ? "You" : _user.name).join(', ')
         chatInfo.children[0].innerText = selectedChat.owner ? selectedChat.name : document.getElementById(selectedChat.id).children[0].innerText
         chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
@@ -322,24 +321,25 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
             if (e.target.tagName == "SPAN") {
                 e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id), false)
                 e.target.remove()
-            } else if (e.target.classList.contains("user") || e.path[1].classList.contains("user")) {
-                e.target.setAttribute("viewID", "messageConfigs")
-                const menu = document.getElementById("messageConfigs-view")
-                menu.style.top = e.pageY + "px"
-                menu.style.left = e.pageX + "px"
-                menu.onclick = e => {
-                    if (e.target.id == "delete")
-                        socket.emit("message", { chatID: selectedChat.id, id: message.id, action: 'delete' })
-    
-                    if (e.target.id == "edit") {
-                        const messageToEdit = selectedChat.messages.find(_message => _message.id ==  message.id)
-                        editingMessage = true
-                        messageInp.setAttribute("messageToEditID", message.id)
-                        messageInp.value = messageToEdit.message
-                        messageInp.focus()
-                    }
+                return
+            } 
+            const userMessage = e.path.find(element => element.classList?.contains("user"))
+            const menu = document.getElementById("messageConfigs-view")
+            menu.style.top = e.pageY + "px"
+            menu.style.left = e.pageX + "px"
+            menu.onclick = e => {
+                if (e.target.id == "delete")
+                    socket.emit("message", { chatID: selectedChat.id, id: message.id, action: 'delete' })
+                    
+                if (e.target.id == "edit") {
+                    const messageToEdit = selectedChat.messages.find(_message => _message.id ==  message.id)
+                    editingMessage = true
+                    messageInp.setAttribute("messageToEditID", message.id)
+                    messageInp.value = messageToEdit.message
+                    messageInp.focus()
                 }
             }
+            !userMessage.getAttribute("viewID") && userMessage.setAttribute("viewID", "messageConfigs")
         }, message => ["message", message.from.id == user.id  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
