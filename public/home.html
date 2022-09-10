@@ -16,9 +16,9 @@
             <h2>Connecting...</h2>
         </div>
         <div id="background" class="hidden"></div>
-        <div id="intro-modal" class="hidden">
+        <div id="intro-modal" class="hidden modal">
             <h1>Welcome to <span>NodeChat</span></h1>
-            <h3>Thank you to join us!</h3>
+            <h3>Thank you for join us!</h3>
         </div>
         <div id="invites-modal" class="hidden modal scrollable">
             <h2 style="margin: 10px;">Loading invites...</h2>
@@ -49,9 +49,10 @@
             </form>
         </div>
         <div id="configs-modal" class="hidden modal">
+            <h2>Configurations</h2>
             <div>
                 <label for="requestMessageAmount">Request message amount:</label>
-                <input type="range" min="10" max="30">
+                <input type="range" min="10" max="30" id="requestMessageAmount">
             </div>
         </div>
         <aside>
@@ -86,10 +87,7 @@
                 <li id="edit">Edit</li>
                 <li id="delete">Delete</li>
             </ul>
-            <div id="group-info" class="hidden">
-                <h1></h1>
-                <p></p>
-            </div>
+            <div id="chat-info" class="hidden"><h1></h1><p></p></div>
             <div id="messages-view" class="scrollable hidden"></div>
             <div id="messageInput" class="hidden">
                 <input type="text">

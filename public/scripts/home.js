@@ -6,7 +6,7 @@ const messageView = document.getElementById("messages-view")
 const searchInput = document.querySelector("#search > div > input")
 const messageInp = document.querySelector("#messageInput > input")
 const loadingIntro = document.getElementById("loading-intro")
-const groupInfo = document.getElementById("group-info")
+const chatInfo = document.getElementById("chat-info")
 const inviteNotification = document.getElementById("invites-notification")
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
@@ -31,8 +31,8 @@ messageInp.addEventListener("keydown", e => e.key == "Enter" && SendMessageHandl
 messageInp.addEventListener('input', e => e.target.value == '' || e.target.value == ' ' || e.target.value == undefined || e.target.value == null ? document.querySelector("#messageInput > svg").classList.add("hidden") : document.querySelector("#messageInput > svg").classList.remove("hidden"))
 
 window.addEventListener("click", e => {
-    ["#filter-view", "#options-view", "#messageConfigs-view", "#groupConfigs-view"].forEach(other => document.querySelector(other)?.classList.add("hidden"))
-    document.querySelector(`#${e.target.getAttribute("viewid") || e.path[1].getAttribute("viewid")}-view`)?.classList.toggle("hidden")
+    ["filter-view", "options-view", "messageConfigs-view", "groupConfigs-view"].forEach(other => document.getElementById(other)?.classList.add("hidden"))
+    document.getElementById(`${e.target.getAttribute("viewid") || e.path[1].getAttribute("viewid")}-view`)?.classList.toggle("hidden")
 })
 
 document.querySelectorAll("#options-view li").forEach(li => li.addEventListener('click', e => {
@@ -72,7 +72,7 @@ document.querySelector("#search > div > svg").addEventListener('click', () => {
 
 searchInput.addEventListener('keydown', async e => {
     if (e.key == "Enter" && e.target.getAttribute("filter")) {
-        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json())?.query.filter(rd => rd.id != user.id && (user.chats.length > 0 && !user.chats.some(chat => chat.id == rd.id)))
+        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json())?.query.filter(rd => rd.id != user.id && !user.chats.some(chat => chat.id == rd.id))
         if (!query.length || query.length == 0) return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
         RenderElements("data-view", queryData => `<p class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
             const queryDataViewElement = document.getElementById("queryData-view")
@@ -141,8 +141,10 @@ socket.on("connect", () => {
     clearInterval(loadingInterval)
     loadingIntro.remove()
     socket.on("user", response => {
-        user = new Object(response)
+        user = response
         user.chats.sort((a, b) => {
+            if (a.messages.length == 0) return 0
+            if (b.messages.length == 0) return -1
             const aDate = new Date(a.messages[a.messages.length - 1].date)
             const bDate = new Date(b.messages[b.messages.length - 1].date)
             return aDate > bDate ? -1 : aDate < bDate ? 1 : aDate == bDate ? 0 : undefined
@@ -178,7 +180,7 @@ socket.on("connect", () => {
         if (response.id == selectedChat?.id) {
             selectedChat.users = response.users
             const usersParsed = selectedChat.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
-            groupInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
+            chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
         }
     })
 
@@ -245,7 +247,7 @@ function HandleChatEvent(response) {
             messageView.innerHTML = ''
             messageView.style.display = "none"
             document.getElementById("messageInput").style.display = "none"
-            groupInfo.classList.add("hidden")
+            chatInfo.classList.add("hidden")
             document.getElementById("messages-placeholder").classList.remove("hidden")
             break;
 
@@ -293,22 +295,22 @@ function OpenModal(e) {
     document.getElementById(`${e.target.id || e.path[1].id}-modal`).classList.remove("hidden")
 }
 
-function GroupClickHandle(group) {
-    if (!selectedChat || selectedChat.id != group.id) {
-        selectedChat = { ...group, allMessagesLoaded: false }
-        const usersParsed = selectedChat.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
-        groupInfo.children[0].innerText = selectedChat.owner ? selectedChat.name : selectedChat.users.find(_user => _user.name != user.name).name
-        groupInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
+function ChatClickHandle(chat) {
+    if (!selectedChat || selectedChat.id != chat.id) {
+        selectedChat = { ...chat, allMessagesLoaded: false }
+        const usersParsed = selectedChat.users.map(_user => _user.id == user.id ? "You" : _user.name).join(', ')
+        chatInfo.children[0].innerText = selectedChat.owner ? selectedChat.name : document.getElementById(selectedChat.id).children[0].innerText
+        chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
         messageView.style.display = "flex"
         document.getElementById("messageInput").style.display = "flex"
-        groupInfo.classList.remove("hidden")
+        chatInfo.classList.remove("hidden")
         document.getElementById("messages-placeholder").classList.add("hidden")
         messageView.classList.remove("hidden")
         ToggleNotification(document.getElementById(selectedChat.id), false)
         RenderMessages(true, false, true, ...selectedChat.messages)
-        if (nonViewedMessages[group.id]) {
-            nonViewedMessages[group.id].forEach(message => socket.emit("message", { chatID: selectedChat.id, id: message.id, action: "view" }))
-            delete nonViewedMessages[group.id]
+        if (nonViewedMessages[chat.id]) {
+            nonViewedMessages[chat.id].forEach(message => socket.emit("message", { chatID: selectedChat.id, id: message.id, action: "view" }))
+            delete nonViewedMessages[chat.id]
         }
 
     }
@@ -343,9 +345,9 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
 }
 
 function RenderChats(clear, prepend, ...chats) { 
-    RenderElements("data-view", chat => `<span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.name != user.name).name}</span><span></span><span></span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, prepend, 
+    RenderElements("data-view", chat => `<span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.id != user.id).name}</span><span></span><span></span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, prepend, 
     (chat, e) => {
-        GroupClickHandle(chat)
+        ChatClickHandle(chat)
         if (e.target.tagName == "svg") {
             const menu = document.getElementById("groupConfigs-view")
             const li = document.createElement("li")
@@ -362,14 +364,11 @@ function RenderChats(clear, prepend, ...chats) {
             menu.style.left = e.pageX + "px"
             menu.appendChild(li)
             menu.onclick = e => {
-                if (e.target.id != "edit") {
-                    socket.emit(chat.owner ? "group" : "DM", { id: chat.id, action: e.target.id })
-                } else {
-                    document.getElementById("groupName").value = chat.name
-                    document.getElementById("groupDescription").value = chat.description
-                    document.getElementById("groupID").value = chat.id
-                    OpenModal({ target: { id: "groupEdit" } })
-                }
+                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat.id, action: e.target.id })
+                document.getElementById("groupName").value = chat.name
+                document.getElementById("groupDescription").value = chat.description
+                document.getElementById("groupID").value = chat.id
+                OpenModal({ target: { id: "groupEdit" } })
             }
         }
     }, () => ["group", "flex-set"], ...chats)

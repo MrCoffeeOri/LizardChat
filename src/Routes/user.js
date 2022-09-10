@@ -8,13 +8,16 @@ export const userRouter = Router()
 userRouter
     .post("/create", async (req, res) => {
         if (!req.body.name || req.body.name == ' ' && !req.body.password || req.body.password == ' ', !req.body.email || req.body.email == ' ')
-            return res.status(400).json({ error: 'User data is incorrect'})
+            return res.status(400).json({ error: "User data is incorrect" })
+
+        if (!req.body.password.match(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/g))
+            return res.status(400).json({ error: "Minimum eight characters, at least one letter and one number" })
         
         if (Find(Object.values(users.data), user => user.email == req.body.email) || req.body.email == process.env.EMAIL_USER)
             return res.status(403).json({ error: "Email already used" })
 
         if (Find(Object.values(cfmTokens.data), token => token.email == req.body.email))
-            return res.status(403).json({ error: "Token already sended to " + req.body.email })
+            return res.status(403).json({ error: "Token already sent to " + req.body.email })
             
         const confirmationToken = TokenUUID()
         createTransport({
@@ -78,3 +81,4 @@ userRouter
         await cfmTokens.write();
         res.status(200).redirect(`/home.html?authToken=${user.authToken}&userID=${user.id}&firstTime=true`)
     })
+    //.patch("/edit", async (req, res) => {})

@@ -275,11 +275,8 @@ li:hover {
     z-index: 3;
     animation: ShowModal 900ms ease;
     margin: 30vh 35vw;
-    color: white;
     text-align: center;
     width: 30vw;
-    background-color: var(--main-color-theme);
-    border-radius: .4rem;
 }
 
 #intro-modal h1 {
@@ -304,7 +301,6 @@ li:hover {
     border: none;
     outline: none;
     padding: 5px;
-    border-radius: .4rem;
     font-weight: bolder;
 }
 
@@ -336,6 +332,8 @@ li:hover {
 }
 
 .modal {
+    border-radius: .4rem;
+    color: white;
     z-index: 6;
     text-align: center;
     position: absolute;
@@ -351,13 +349,10 @@ li:hover {
 
 #newGroup-modal {
     padding: 8px 0;
-    border-radius: .4rem;
     width: 25%;
     top: 34%;
     left: 37.5%;
-    color: white;
 }
-
 
 #newGroup-modal h1 { 
     margin: 0;
@@ -380,9 +375,6 @@ li:hover {
     max-width: 35%;
     min-width: 20%;
     height: 32%;
-    background-color: var(--main-darken-color-theme);
-    border-radius: .4rem;
-    color: white;
     z-index: 5;
 }
 
@@ -435,8 +427,6 @@ li:hover {
     top: 34vh;
     left: 37.5vw;
     width: 25vw;
-    border-radius: .4rem;
-    color: white;
 }
 
 #sendInvite-modal select {
@@ -453,14 +443,14 @@ li:hover {
 
 #sendInvite-modal button { margin: 15px auto; }
 
-#group-info {
+#chat-info {
     height: 10%;
     text-align: center;
     background-color: var(--third-color-theme);
     color: white;
 }
 
-#group-info > h1, p { margin: 0; }
+#chat-info > h1, p { margin: 0; }
 
 #invites-notification {
     background-color: red;
