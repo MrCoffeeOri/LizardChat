@@ -12,7 +12,7 @@ const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
 const parseMessageContent = (message, limit = true) => (message.message.length > 200 && limit ? message.message.slice(0, 200) + '...' : message.message)
     .replaceAll(/<|>/g, char => char == '<' ? "&lt;" : "&gt;")
-    .replaceAll(/(\^|\$|\_)+[^\s\^\$\_]+\1/g, word => `<span style="${word[0] == '^' ? "font-size: 1.3pc;" : `text-decoration: ${word[0] == '$' ? "line-through" : word[0] == '_' ? "underline": "none"};`}">${word.slice(1, word.length - 1)}</span>`)
+    .replaceAll(/(\^|\$|\_)+[^\^\$\_]+\1/g, word => `<span style="${word[0] == '^' ? "font-size: 1.3pc;" : `text-decoration: ${word[0] == '$' ? "line-through" : word[0] == '_' ? "underline": "none"};`}">${word.slice(1, word.length - 1)}</span>`)
     .replaceAll(/(https?:\/\/[^\s\<\>]+)/g, url => url.match(/(\.png|\.webp|\.gif|\.jpg)\b/g) ? `<img src="${url}"/>` : url.match(/youtube\.com\/watch\?v=[^\s]+/g) ? `<iframe width="100%" height="200" src="https://www.youtube.com/embed/${url.split('=')[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${url}" target="_blank">${url}</a>`)
 let selectedChat = null, user = null, editingMessage = false, nonViewedMessages = {}
 
@@ -342,7 +342,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                     messageInp.focus()
                 }
             }
-            !userMessage.getAttribute("viewID") && userMessage.setAttribute("viewID", "messageConfigs")
+            !userMessage?.getAttribute("viewID") && userMessage.setAttribute("viewID", "messageConfigs")
         }, message => ["message", message.from.id == user.id  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
