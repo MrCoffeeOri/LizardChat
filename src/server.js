@@ -313,7 +313,7 @@ function ChatParser(id, userID) {
         
     return { 
         ...chat,
-        remainingMessages: Math.max(messages.length - 10, 0),
+        remainingMessages: messages.length - 10 > 0,
         users: Object.values(chat.users),
         messages: filteredMessages,
         inviteToken: groups.data[id] && groups.data[id].owner == userID ? groups.data[id].inviteToken : undefined

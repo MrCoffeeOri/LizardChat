@@ -8,7 +8,8 @@ body {
 main {
     width: 75vw;
     height: 100vh;
-    background-color: var(--main-darken-color-theme);
+    background-image: url(../assets/homeBackground.webp);
+    background-size: contain;
 }
 
 aside {
@@ -134,7 +135,7 @@ li:hover {
 
 #data-view { height: 88%; }
 
-#data-view .search-user {
+.search-user {
     text-align: center;
     background-color: var(--third-color-theme);
     padding: 6px;
@@ -143,7 +144,7 @@ li:hover {
     border-radius: .4rem;
 }
 
-#data-view .search-user:hover {
+.search-user:hover {
     cursor: pointer;
     background-color: var(--third-lighten-color-theme);
 }
@@ -155,7 +156,7 @@ li:hover {
 
 ::-webkit-scrollbar-thumb { background-color: var(--main-color-theme); }
 
-#data-view .group {
+.group {
     justify-content: space-between;
     flex-wrap: wrap;
     font-size: medium;
@@ -167,33 +168,34 @@ li:hover {
     transition: 200ms ease;
 }
 
-#data-view .group span:nth-child(2), span:nth-child(3) {
+.group > span:nth-child(2), .group > span:nth-child(3) {
     display: none;
     transition: 400ms ease-in-out;
     color: white;
     font-size: smaller;
 }
 
-#data-view .group span:nth-child(2) {
+.group span:nth-child(2) {
     border-radius: 50%;
     background-color: rgb(139, 36, 36);
     padding: 1px 6px;
 }
 
-#data-view .group:hover {
+.group:hover {
     cursor: pointer;
     background-color: var(--main-darken-color-theme);
     border: 2px solid var(--third-color-theme);
 }
 
-#data-view .group:hover svg { display: block; }
+.group:hover svg { display: block; }
 
 #messages-view {
     height: 80%;
     flex-direction: column;
 }
 
-#messages-view .message {
+.message {
+    box-shadow: 4px 3px 6px black;
     position: relative;
     align-self: flex-start;
     color: white;
@@ -203,44 +205,55 @@ li:hover {
     margin: 9px;
     padding: 6px;
     background-color: var(--third-color-theme);
-    border: 2px solid var(--main-darken-color-theme);
     transition: 200ms ease;
 }
 
-#messages-view .message p { 
+.message p { 
     overflow-wrap: break-word; 
     margin: 2px 0 0 0;
 }
 
-#messages-view .message > span {
+.message > span {
     display: block;
     color: rgb(90, 90, 252);
     text-decoration: underline;
 }
 
-#messages-view .message img {
+.message img {
     width: 100%;
     height: 70%;
 }
 
-#messages-view .message .message-time {
+.message .message-time {
     text-align: end;
     float: right;
     font-size: 0.8pc;
     display: inline;
 }
 
-#messages-view .message .message-header {
+.message .message-header {
     text-align: start;
     font-size: 0.7pc;
     display: inline;
 }
 
-#messages-view .message p { margin: 0; }
+.message p { margin: 0; }
 
-#messages-view .message > span:hover { cursor: pointer; }
+.message > span:hover { cursor: pointer; }
 
-#messages-view .user {
+.message .hidden-content {
+    border-radius: .2rem;
+    transition: 300ms;
+    background-color: black; 
+    color: black;
+}
+
+.message .hidden-content:hover { 
+    visibility: visible;
+    background: none; 
+}
+
+.message.user {
     font-weight: bold;
     color: black;
     align-self: flex-end;
@@ -258,6 +271,7 @@ li:hover {
 #messageInput input {
     width: 40vw;
     height: 5vh;
+    border-radius: 1rem;
 }
 
 #background {
@@ -322,6 +336,7 @@ li:hover {
 #messages-placeholder h1 { color: var(--second-color-theme); }
 
 #messages-placeholder img {
+    animation: PlayLogo 2s ease-in-out infinite alternate-reverse;
     margin-top: 35vh;
     width: 10vw;
     transition: 300ms ease;
@@ -374,7 +389,7 @@ li:hover {
     z-index: 5;
 }
 
-#invites-modal .invite {
+.invite {
     padding: 9px;
     margin: 5px;
     border-radius: .4rem;
@@ -383,7 +398,7 @@ li:hover {
     transition: 200ms ease;
 }
 
-#invites-modal .invite button {
+.invite button {
     border-radius: .4rem;
     margin: 0 5px;
     padding: 5px 10px;
@@ -393,12 +408,12 @@ li:hover {
     transition: 200ms ease;
 }
 
-#invites-modal .invite button:last-of-type {
+.invite button:last-of-type {
     background-color: red;
     color: white;
 }
 
-#invites-modal .invite button:hover {
+.invite button:hover {
     cursor: pointer;
     transform: scale(1.1);
 }

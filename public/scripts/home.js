@@ -10,7 +10,10 @@ const chatInfo = document.getElementById("chat-info")
 const inviteNotification = document.getElementById("invites-notification")
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
-const parseMessageContent = (message, limit = true) => (message.message.length > 200 && limit ? message.message.slice(0, 200) + '...' : message.message).replaceAll(/(https?:\/\/[^\s]+)/g, url => url.match(/(\.png|\.webp|\.gif|\.jpg)\b/g) ? `<img src="${url}"/>` : url.match(/youtube\.com\/watch\?v=[a-zA-Z0-9]+/g) ? `<iframe width="100%" height="200" src="https://www.youtube.com/embed/${url.split('=')[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${url}" target="_blank">${url}</a>`)
+const parseMessageContent = (message, limit = true) => (message.message.length > 200 && limit ? message.message.slice(0, 200) + '...' : message.message)
+    .replaceAll(/<|>/g, char => char == '<' ? "&lt;" : "&gt;")
+    .replaceAll(/(\^|\$|\_)+[^\s\^\$\_]+\1/g, word => `<span style="${word[0] == '^' ? "font-size: 1.3pc;" : `text-decoration: ${word[0] == '$' ? "line-through" : word[0] == '_' ? "underline": "none"};`}">${word.slice(1, word.length - 1)}</span>`)
+    .replaceAll(/(https?:\/\/[^\s\<\>]+)/g, url => url.match(/(\.png|\.webp|\.gif|\.jpg)\b/g) ? `<img src="${url}"/>` : url.match(/youtube\.com\/watch\?v=[^\s]+/g) ? `<iframe width="100%" height="200" src="https://www.youtube.com/embed/${url.split('=')[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${url}" target="_blank">${url}</a>`)
 let selectedChat = null, user = null, editingMessage = false, nonViewedMessages = {}
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
@@ -32,7 +35,7 @@ messageInp.addEventListener('input', e => e.target.value == '' || e.target.value
 
 window.addEventListener("click", e => {
     ["filter-view", "options-view", "messageConfigs-view", "groupConfigs-view"].forEach(other => document.getElementById(other)?.classList.add("hidden"))
-    document.getElementById(`${e.target.getAttribute("viewid") || e.path[1].getAttribute("viewid")}-view`)?.classList.toggle("hidden")
+    document.getElementById(`${e.target.getAttribute("viewid") || e.target.closest(`*[viewid]`)?.getAttribute("viewid")}-view`)?.classList.toggle("hidden")
 })
 
 document.querySelectorAll("#options-view li").forEach(li => li.addEventListener('click', e => {
@@ -116,9 +119,9 @@ document.getElementById("newGroupForm").addEventListener('submit', (e) => {
 })
 
 messageView.addEventListener('scroll', async e => {
-    if (e.target.scrollTop == 0 && selectedChat != null && !selectedChat.allMessagesLoaded) {
+    if (e.target.scrollTop == 0 && selectedChat != null && selectedChat.remainingMessages) {
         const data = (await (await fetch(`/api/chat/${selectedChat.id}/messages/?amount=10&limit=${selectedChat.messages.length}&userID=${user.id}&authToken=${authToken}`)).json())
-        selectedChat.allMessagesLoaded = data.remaining == 0
+        selectedChat.remainingMessages = data.remaining == 0
         data.messages.forEach(message => message.from.id != user.id && !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedChat.id, id: message.id, action: "view" }))
         messageView.scrollBy(0, document.getElementById(selectedChat.messages[0].id).offsetTop)
         selectedChat.messages.unshift(...data.messages)
@@ -214,7 +217,7 @@ socket.on("connect", () => {
                 chat.messages[chat.messages.findIndex(mesage => mesage.id == response.message.id)].views = response.message.views
                 break;
         }
-        selectedChat = selectedChat && (response.chatID == selectedChat.id) ? chat : selectedChat
+        selectedChat = response.chatID == selectedChat?.id ? chat : selectedChat
     })
 
     socket.on("error", response => {
@@ -316,14 +319,14 @@ function ChatClickHandle(chat) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<p class="message-content">${parseMessageContent(message, true)}</p>${message.message.length > 200 ? `<span>See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
+    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<div class="message-content">${parseMessageContent(message, true)}</div>${message.message.length > 200 ? `<span class="extend-message">See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
         (message, e) => {
-            if (e.target.tagName == "SPAN") {
+            if (e.target.classList.contains("extend-message")) {
                 e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id), false)
                 e.target.remove()
                 return
             } 
-            const userMessage = e.path.find(element => element.classList?.contains("user"))
+            const userMessage = e.target.closest(".user")
             const menu = document.getElementById("messageConfigs-view")
             menu.style.top = e.pageY + "px"
             menu.style.left = e.pageX + "px"

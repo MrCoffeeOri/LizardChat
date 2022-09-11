@@ -9,10 +9,11 @@
 }
 
 @keyframes CloseCard {
-    from {
-        width: 100%;
-    }
-    to {
-        width: 0;
-    }
+    from { width: 100%; }
+    to { width: 0; }
+}
+
+@keyframes PlayLogo {
+    from { transform: translateY(-10%); }
+    to { transform: translateY(10%); }
 }
