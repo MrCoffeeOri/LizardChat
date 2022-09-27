@@ -22,7 +22,7 @@ await cfmTokens.read()
 
 config()
 app.use(json())
-app.use(cors())
+app.use(cors({ origin: 'https://nodechatifsp.herokuapp.com' }))
 app.use("/api/chat", chatRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
@@ -134,7 +134,7 @@ io.on('connection', async socket => {
             
             case "rename":
                 groups.data[data.id].name = data.name
-                io.to(data.id).emit('group', { id: data.id, name: data.name, action: "rename" })
+                io.to(data.id).emit('group', { id: data.id, name: data.name, action: data.action })
                 break
 
             case "join":
@@ -146,15 +146,16 @@ io.on('connection', async socket => {
 
                 groups.data[data.id].users[socket.data.user.id] = { name: socket.data.user.name, id: socket.data.user.id, isOwner: false, isBlocked: false }
                 users.data[socket.data.user.id].groups[data.id] = true
-                await socket.join(data.id)
+                socket.emit('group', { group: ChatParser(data.id, socket.data.user.id), action: data.action })
                 io.to(data.id).emit('usersInGroup', { users: Object.values(groups.data[data.id].users), id: data.id })
+                await socket.join(data.id)
                 break
 
             case "leave":
                 delete groups.data[data.id].users[socket.data.user.id]
                 delete users.data[socket.data.user.id].groups[data.id]
                 io.to(data.id).emit('usersInGroup', { users: Object.values(groups.data[data.id].users), id: data.id })
-                socket.emit('group', { id: data.id, name: data.name, action: "leave" })
+                socket.emit('group', { id: data.id, name: data.name, action: data.action })
                 await socket.leave(data.id)
                 break
         }
@@ -236,7 +237,7 @@ io.on('connection', async socket => {
         let message = undefined
         switch (data.action) {
             case "send":
-                message = { from: { name: socket.data.user.name, id: socket.data.user.id }, id: LengthUUID(Object.keys(group.messages).length), message: data.message, views: { [socket.data.user.id]: true }, date: new Date(), }
+                message = { from: { name: socket.data.user.name, id: socket.data.user.id }, contentType: data.contentType, id: LengthUUID(Object.keys(group.messages).length), content: data.content, views: { [socket.data.user.id]: true }, date: new Date(), }
                 group.messages[message.id] = message
                 break
 
@@ -245,7 +246,7 @@ io.on('connection', async socket => {
                 break
 
             case "edit":
-                group.messages[data.id].message = data.message
+                group.messages[data.id].content = data.content
                 message = group.messages[data.id]
                 break
 

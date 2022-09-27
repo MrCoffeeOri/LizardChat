@@ -1,20 +1,23 @@
 import { io } from "https://cdn.socket.io/4.4.1/socket.io.esm.min.js";
 
 const authToken = new URLSearchParams(window.location.search).get('authToken')
+const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const socket = io(window.location.host, { auth: { token: authToken, userID: new URLSearchParams(window.location.search).get('userID') } })
 const messageView = document.getElementById("messages-view")
+const messageInp = document.querySelector(`#messageInput > input[type="text"]`)
+const fileInp = document.querySelector(`#messageInput > input[type="file"]`)
 const searchInput = document.querySelector("#search > div > input")
-const messageInp = document.querySelector("#messageInput > input")
+const fileSelec = document.querySelectorAll("#messageInput > svg")[0]
 const loadingIntro = document.getElementById("loading-intro")
 const chatInfo = document.getElementById("chat-info")
 const inviteNotification = document.getElementById("invites-notification")
-const notificationAudio = new Audio("../assets/notificationSound.mp3")
+const fileSC = document.getElementById("file-showcase")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
-const parseMessageContent = (message, limit = true) => (message.message.length > 200 && limit ? message.message.slice(0, 200) + '...' : message.message)
+const parseMessageContent = (content, limit = true) => (content.length > 200 && limit ? content.slice(0, 200) + '...' : content)
     .replaceAll(/<|>/g, char => char == '<' ? "&lt;" : "&gt;")
-    .replaceAll(/(\^|\$|\_)+[^\^\$\_]+\1/g, word => `<span style="${word[0] == '^' ? "font-size: 1.3pc;" : `text-decoration: ${word[0] == '$' ? "line-through" : word[0] == '_' ? "underline": "none"};`}">${word.slice(1, word.length - 1)}</span>`)
-    .replaceAll(/(https?:\/\/[^\s\<\>]+)/g, url => url.match(/(\.png|\.webp|\.gif|\.jpg)\b/g) ? `<img src="${url}"/>` : url.match(/youtube\.com\/watch\?v=[^\s]+/g) ? `<iframe width="100%" height="200" src="https://www.youtube.com/embed/${url.split('=')[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${url}" target="_blank">${url}</a>`)
-let selectedChat = null, user = null, editingMessage = false, nonViewedMessages = {}
+    .replaceAll(/\((\^|\$|\_)[^\^\$\_\(\)]+\S\)/g, word => `<span style="${word[1] == '^' ? "font-size: 1.3pc;" : `text-decoration: ${word[1] == '$' ? "line-through" : word[1] == '_' ? "underline": "none"};`}">${word.slice(2, word.length - 1)}</span>`)
+    .replaceAll(/(https?:\/\/[^\s\<\>]+)/g, url => url.match(/(\.png|\.webp|\.gif|\.jpg|\.jpeg)\b/g) ? `<img src="${url}"/>` : url.match(/youtube\.com\/watch\?v=[^\s]+/g) ? `<iframe width="100%" height="200" src="https://www.youtube.com/embed/${url.split('=')[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${url}" target="_blank">${url}</a>`)
+let selectedChat = null, user = null, nonViewedMessages = {}
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
     const toggleWelcome = () => {
@@ -29,13 +32,26 @@ if (new URLSearchParams(window.location.search).get('firstTime')) {
     }
 }
 
-document.querySelector("#messageInput > svg").addEventListener('click', SendMessageHandle)
+document.querySelectorAll("#messageInput > svg")[1].addEventListener('click', SendMessageHandle)
 messageInp.addEventListener("keydown", e => e.key == "Enter" && SendMessageHandle())
-messageInp.addEventListener('input', e => e.target.value == '' || e.target.value == ' ' || e.target.value == undefined || e.target.value == null ? document.querySelector("#messageInput > svg").classList.add("hidden") : document.querySelector("#messageInput > svg").classList.remove("hidden"))
+fileSelec.addEventListener('click', () => !fileSC.hasAttribute("file") && fileInp.click())
+fileSC.children[3].addEventListener("click", () => fileInp.click())
+
+fileSC.children[0].addEventListener("click", () => {
+    ToggleFile()
+    messageInp.value = ''
+    messageInp.removeAttribute("messageToEditID")
+})
 
 window.addEventListener("click", e => {
-    ["filter-view", "options-view", "messageConfigs-view", "groupConfigs-view"].forEach(other => document.getElementById(other)?.classList.add("hidden"))
+    document.querySelectorAll(".selection").forEach(other => e.target.getAttribute("viewid") + "-view" != other.id && other?.classList.add("hidden"))
     document.getElementById(`${e.target.getAttribute("viewid") || e.target.closest(`*[viewid]`)?.getAttribute("viewid")}-view`)?.classList.toggle("hidden")
+})
+
+fileInp.addEventListener("input", e => {
+    const reader = new FileReader()
+    reader.onloadend = _e => { ToggleFile({ name: e.target.files[0].name, url: _e.target.result, size: e.target.files[0].size }) }
+    reader.readAsDataURL(e.target.files[0])
 })
 
 document.querySelectorAll("#options-view li").forEach(li => li.addEventListener('click', e => {
@@ -77,7 +93,7 @@ searchInput.addEventListener('keydown', async e => {
     if (e.key == "Enter" && e.target.getAttribute("filter")) {
         const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json())?.query.filter(rd => rd.id != user.id && !user.chats.some(chat => chat.id == rd.id))
         if (!query.length || query.length == 0) return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
-        RenderElements("data-view", queryData => `<p class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
+        RenderElements("data-view", queryData => `<p style="text-align: center;" class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
             const queryDataViewElement = document.getElementById("queryData-view")
             const closeView = () => {
                 queryDataViewElement.style.width = 0
@@ -87,16 +103,15 @@ searchInput.addEventListener('keydown', async e => {
             queryDataViewElement.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" width="50" height="35" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/></svg>
                 <h1>${queryData.name}-${queryData.id}</h1>
-                <button>Send message</button>
+                <button>${queryData.inviteToken ? "Join" : "Send message"}</button>
             `
             queryDataViewElement.children[0].onclick = closeView
             queryDataViewElement.children[2].onclick = () => {
-                socket.emit("DM", { action: "create", userID: queryDataViewElement.children[1].innerText.split('-')[1] })
+                queryData.inviteToken ? socket.emit("group", { action: "join", token: queryData.inviteToken, id: queryData.id }) : socket.emit("DM", { action: "create", userID: queryDataViewElement.children[1].innerText.split('-')[1] })
                 closeView()
                 searchInput.value = ''
-                searchInput.dispatchEvent(new Event("input"))
             }
-        }, null, ...query)
+        }, () => ["data-element"], ...query)
     } else if (e.key == "Enter") ShowErrorCard("Enter a search query")
 })
 
@@ -193,24 +208,33 @@ socket.on("connect", () => {
                 document.getElementById(chat.id).remove()
                 RenderChats(false, true, chat)
                 chat.messages.push(response.message)
+                document.getElementById(chat.id).children[2].innerText = response.message.contentType == "text" ? `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}` : response.message.content.name
                 if (!selectedChat || selectedChat.id != response.chatID) {
                     notificationAudio.play()
                     nonViewedMessages[response.chatID] = nonViewedMessages[response.chatID] ? new Array(...nonViewedMessages[response.chatID], response.message) : [response.message]
-                    ToggleNotification(document.getElementById(response.chatID), true)
-                } else {
-                    RenderMessages(false, false, true, response.message)
-                    if (response.message.from.id != user.id) socket.emit("message", { chatID: selectedChat.id, id: response.message.id, action: "view" })
+                    return ToggleNotification(document.getElementById(response.chatID), true)
                 }
+                RenderMessages(false, false, true, response.message)
+                if (response.message.from.id != user.id) 
+                    socket.emit("message", { chatID: selectedChat.id, id: response.message.id, action: "view" });
                 break;
         
             case "edit":
-                chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].message = response.message.message
-                if (selectedChat?.id == response.chatID) document.querySelector(`#${response.id} .message-content`).innerHTML = parseMessageContent(response.message, false)
+                chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].content = response.message.content
+                if (chat.messages[chat.messages.length - 1].id == response.id && chat.messages[chat.messages.length - 1].contentType == "text") 
+                    document.getElementById(chat.id).children[2].innerText = `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}`;
+                if (selectedChat?.id == response.chatID) 
+                    response.message.contentType == "text" ? 
+                        document.querySelector(`#${response.id} .message-content`).innerHTML = parseMessageContent(response.message.content, false) : 
+                        document.querySelector(`#${response.id} .message-content`).innerHTML = (response.message.content.url.includes("image") ? `<img src="${response.message.content.url}" alt="${response.message.content.name}"/>` : `<div class="file"><span>${response.message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${response.message.content.name}" href="${response.message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(response.message.content.description)}</p>`;
                 break;
 
             case "delete":
+                if (chat.messages[chat.messages.length - 1].id == response.id) 
+                    document.getElementById(chat.id).children[2].innerText = chat.messages[chat.messages.length - 2] ? chat.messages[chat.messages.length - 2].contentType == "text" ? `${chat.messages[chat.messages.length - 2].content.slice(0, 10) + (chat.messages[chat.messages.length - 2].content.length > 10 ? '...' : '')} ${new Date(chat.messages[chat.messages.length - 2].date).toLocaleTimeString()}` : chat.messages[chat.messages.length - 2].content.name : null;
+                if (selectedChat?.id == response.chatID) 
+                    document.getElementById(response.id).remove();
                 chat.messages.splice(chat.messages.findIndex(message => message.id == response.id), 1)
-                if (selectedChat?.id == response.chatID) document.getElementById(response.id).remove()
                 break;
 
             case "view":
@@ -237,6 +261,7 @@ socket.on("connect", () => {
 function HandleChatEvent(response) {
     switch (response.action) {
         case "create":
+        case "join":
             user.chats.push(response.group || response.dm) 
             RenderChats(false, false, response.group || response.dm)
             break;
@@ -260,9 +285,6 @@ function HandleChatEvent(response) {
                 document.getElementById(response.id).children[0].innerText = response.name
             }
             break;
-    
-        default:
-            break;
     }
 }
 
@@ -272,19 +294,16 @@ function ShowErrorCard(message) {
 }
 
 function ToggleNotification(chatElement, show = true) {
-    const lastMessage = nonViewedMessages[chatElement.id] && new String(nonViewedMessages[chatElement.id][nonViewedMessages[chatElement.id].length - 1].message)
     chatElement.children[1].style.display = show ? "block" : "none"
-    chatElement.children[2].style.display = show ? "block" : "none"
     chatElement.children[1].innerText = nonViewedMessages[chatElement.id]?.length
-    chatElement.children[2].innerText = lastMessage ? lastMessage.slice(0, 10) + (lastMessage.length > 10 ? '...' : '') : null
 }
 
 function SendMessageHandle() {
-    if (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null) return
-    socket.emit('message', { id: messageInp.getAttribute("messageToEditID"), message: messageInp.value, chatID: selectedChat.id, action: editingMessage ? "edit" : "send" })
+    if (!fileSC.hasAttribute("file") && (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null)) return
+    socket.emit('message', { id: messageInp.getAttribute("messageToEditID"), contentType: fileSC.hasAttribute("file") ? "file" : "text", content: fileSC.hasAttribute("file") ? {...JSON.parse(fileSC.getAttribute("file")), description: messageInp.value } : messageInp.value, chatID: selectedChat.id, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send" })
     messageInp.value = ""
-    editingMessage = false
-    messageInp.dispatchEvent(new Event('input'))
+    messageInp.removeAttribute("messageToEditID")
+    fileSC.children[0].dispatchEvent(new Event('click'))
 }
 
 function OpenModal(e) {
@@ -299,11 +318,13 @@ function OpenModal(e) {
 
 function ChatClickHandle(chat) {
     if (!selectedChat || selectedChat.id != chat.id) {
+        if (selectedChat) document.getElementById(selectedChat.id).style.backgroundColor = "var(--third-color-theme)"
         selectedChat = chat
         const usersParsed = selectedChat.users.map(_user => _user.id == user.id ? "You" : _user.name).join(', ')
         chatInfo.children[0].innerText = selectedChat.owner ? selectedChat.name : document.getElementById(selectedChat.id).children[0].innerText
         chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
         messageView.style.display = "flex"
+        document.getElementById(selectedChat.id).style.backgroundColor = "var(--third-lighten-color-theme)"
         document.getElementById("messageInput").style.display = "flex"
         chatInfo.classList.remove("hidden")
         document.getElementById("messages-placeholder").classList.add("hidden")
@@ -318,11 +339,19 @@ function ChatClickHandle(chat) {
     }
 }
 
+function ToggleFile(file) {
+    fileSC.style.display = !file ? "none" : "flex"
+    fileSC.children[1].innerHTML = !file ? null : file.url.includes("image") ? `<img style="width: 44%;" src="${file.url}" alt="${file.name}"/>` : `<svg style="width: 40%;" viewBox="0 0 88 110" width="88" height="110" class=""><path stroke-opacity=".08" stroke="#000" d="M7 2.5h56.929a5.5 5.5 0 0 1 3.889 1.61l15.071 15.072a5.5 5.5 0 0 1 1.611 3.89V104a3.5 3.5 0 0 1-3.5 3.5H7a3.5 3.5 0 0 1-3.5-3.5V6A3.5 3.5 0 0 1 7 2.5z" fill="#FFF" fill-rule="evenodd"></path><path d="M65.5 3.5v15a3 3 0 0 0 3 3h15" stroke-opacity=".12" stroke="#000" fill="#FFF"></path></svg> <h3>${file.name}</h3>`
+    fileSC.children[2].innerText = !file ? null : (file.size / 1000) + " KB"
+    fileSelec.style.display = !file ? "block" : "none"
+    !file ? fileSC.removeAttribute("file") : fileSC.setAttribute("file", JSON.stringify(file))
+}
+
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<div class="message-content">${parseMessageContent(message, true)}</div>${message.message.length > 200 ? `<span class="extend-message">See more ${message.message.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
+    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<div class="message-content">${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.url.includes("image") ? `<img src="${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}</div>${message.contentType == "text" && message.content.length > 200 ? `<span class="extend-message">See more ${message.content.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
         (message, e) => {
             if (e.target.classList.contains("extend-message")) {
-                e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id), false)
+                e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id).content, false)
                 e.target.remove()
                 return
             } 
@@ -330,16 +359,23 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
             const menu = document.getElementById("messageConfigs-view")
             menu.style.top = e.pageY + "px"
             menu.style.left = e.pageX + "px"
+            menu.children[2].style.display = message.content.url?.includes("image") ? "block" : "none"
             menu.onclick = e => {
                 if (e.target.id == "delete")
                     socket.emit("message", { chatID: selectedChat.id, id: message.id, action: 'delete' })
                     
                 if (e.target.id == "edit") {
-                    const messageToEdit = selectedChat.messages.find(_message => _message.id ==  message.id)
-                    editingMessage = true
                     messageInp.setAttribute("messageToEditID", message.id)
-                    messageInp.value = messageToEdit.message
+                    messageInp.value = message.contentType == "text" ? message.content : message.content.description
                     messageInp.focus()
+                    message.contentType == "file" && ToggleFile(message.content)
+                }
+
+                if (e.target.id == "download" && message.content?.url.includes("image")) {
+                    const dLink = document.createElement("a")
+                    dLink.href = message.content.url
+                    dLink.setAttribute("download",  message.content.name)
+                    dLink.click()
                 }
             }
             !userMessage?.getAttribute("viewID") && userMessage.setAttribute("viewID", "messageConfigs")
@@ -348,24 +384,16 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
 }
 
 function RenderChats(clear, prepend, ...chats) { 
-    RenderElements("data-view", chat => `<span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.id != user.id).name}</span><span></span><span></span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, prepend, 
+    RenderElements("data-view", chat => `<span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.id != user.id).name}</span><span></span><span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, prepend, 
     (chat, e) => {
         ChatClickHandle(chat)
-        if (e.target.tagName == "svg") {
+        if (e.target.tagName == "svg" || e.target.tagName == "path") {
             const menu = document.getElementById("groupConfigs-view")
-            const li = document.createElement("li")
-            menu.innerHTML = ''
-            li.id = chat.owner == user.id ? "delete" : "leave"
-            li.innerText = chat.owner == user.id ? "Delete" : "Leave"
-            if (chat.owner == user.id) {
-                const li = document.createElement("li")
-                li.id = "edit"
-                li.innerText = "Edit"
-                menu.appendChild(li)
-            }
-            menu.style.top = e.pageY + "px"
+            menu.children[0].id = chat.owner == user.id ? "delete" : "leave"
+            menu.children[0].innerText = chat.owner == user.id ? "Delete" : "Leave"
+            menu.children[1].style.display = chat.owner == user.id ? "block" : "none"
+            menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
             menu.style.left = e.pageX + "px"
-            menu.appendChild(li)
             menu.onclick = e => {
                 if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat.id, action: e.target.id })
                 document.getElementById("groupName").value = chat.name
@@ -374,20 +402,18 @@ function RenderChats(clear, prepend, ...chats) {
                 OpenModal({ target: { id: "groupEdit" } })
             }
         }
-    }, () => ["group", "flex-set"], ...chats)
+    }, () => ["group", "flex-set", "data-element"], ...chats)
 }
 
 function RenderInvites(clear, ...invites) {
-    if (invites.length == 0) 
-        document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">User has no invites</h2>`
-    else 
-        RenderElements("invites-modal", invite => `<span>${invite.from.name}-${invite.from.id}</span><span>${invite.group.name}</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (invite, e) => {
-            if (e.target.tagName == "BUTTON") {
-                socket.emit("handleInvite", { id: e.path[1].id, token: invite.token, action: e.target.getAttribute("action") })
-                e.path[2].classList.add("hidden")
-                document.getElementById("background").classList.add("hidden")
-            }
-        }, () => ["invite"], ...invites)
+    if (invites.length == 0) return document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">User has no invites</h2>`
+    RenderElements("invites-modal", invite => `<span>${invite.from.name}-${invite.from.id}</span><span>${invite.group.name}</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (invite, e) => {
+        if (e.target.tagName == "BUTTON") {
+            socket.emit("handleInvite", { id: e.path[1].id, token: invite.token, action: e.target.getAttribute("action") })
+            e.path[2].classList.add("hidden")
+            document.getElementById("background").classList.add("hidden")
+        }
+    }, () => ["invite"], ...invites)
 }
 
 function RenderElements(viewID, innerHTML, clear, prepend, onclick, classList, ...elements) {
