@@ -7,12 +7,13 @@ if (userAuth.email && userAuth.password)
 
 form.addEventListener("submit", e => {
     e.preventDefault()
+    ShowInfoMessage("Processing request...", "blue")
+    const name = document.getElementById("nickNamelInp")?.value
     const email = document.getElementById("emailInp").value
     const password = document.getElementById("passwordInp").value
-    const name = document.getElementById("nickNamelInp")?.value
     const rPassword = document.getElementById("repeatPasswordInp")?.value
     if (showLogin && (name == ' ' || rPassword != password))
-        return ShowInfoMessage("Invalid nickname or password", true)
+        return ShowInfoMessage("Invalid nickname or password", "red")
 
     showLogin ? 
         fetch(`/api/user/create`, {
@@ -65,20 +66,15 @@ document.getElementById("modal").children[2].addEventListener("click", e => {
 
 function HanleUserAuth(e) {
     e.json().then(_e => {
-        if (!e.ok) {
-            window.localStorage.clear()
-            return ShowInfoMessage(_e.message || _e.error, true)
-        }
-        if (_e.userID && _e.authToken)
-            setTimeout(() => window.location.href = `/home.html?authToken=${_e.authToken}&userID=${_e.userID}`, 1500)
-
-        ShowInfoMessage(_e.message)
+        !e.ok && window.localStorage.clear()
+        ShowInfoMessage(_e.message || _e.error, e.ok ? "var(--second-darken-color-theme)" : "red")
+        if (_e.userID && _e.authToken) window.location.href = `/home.html?authToken=${_e.authToken}&userID=${_e.userID}`
     })
 }
 
-function ShowInfoMessage(message, isError = false) {
+function ShowInfoMessage(message, color) {
     const messageWarning = document.getElementById("warningMessage")
     messageWarning.style.display = "block"
     messageWarning.innerText = message
-    messageWarning.style.backgroundColor = isError ? "red" : "var(--second-darken-color-theme)"
+    messageWarning.style.backgroundColor = color
 }

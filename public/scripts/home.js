@@ -1,5 +1,7 @@
 import { io } from "https://cdn.socket.io/4.4.1/socket.io.esm.min.js";
 
+// TODO: Invite, CHANGE IT!!!
+
 const authToken = new URLSearchParams(window.location.search).get('authToken')
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const socket = io(window.location.host, { auth: { token: authToken, userID: new URLSearchParams(window.location.search).get('userID') } })
@@ -59,9 +61,9 @@ document.querySelectorAll("#options-view li").forEach(li => li.addEventListener(
         const selection = document.getElementById("groupToInvite")
         selection.innerHTML = null
         user.chats.forEach(chat => {
-            if (chat?.owner == user.id) {
+            if (chat?.owner == user.uid) {
                 selection.appendChild(document.createElement("option"))
-                selection.lastChild.value = chat.id
+                selection.lastChild.value = chat._id
                 selection.lastChild.innerHTML = chat.name
             }
         })
@@ -91,7 +93,7 @@ document.querySelector("#search > div > svg").addEventListener('click', () => {
 
 searchInput.addEventListener('keydown', async e => {
     if (e.key == "Enter" && e.target.getAttribute("filter")) {
-        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json())?.query.filter(rd => rd.id != user.id && !user.chats.some(chat => chat.id == rd.id))
+        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json())?.query.filter(rd => rd.id != user.uid && !user.chats.some(chat => chat.id == rd.id))
         if (!query.length || query.length == 0) return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
         RenderElements("data-view", queryData => `<p style="text-align: center;" class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
             const queryDataViewElement = document.getElementById("queryData-view")
@@ -135,12 +137,12 @@ document.getElementById("newGroupForm").addEventListener('submit', (e) => {
 
 messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && selectedChat != null && selectedChat.remainingMessages) {
-        const data = (await (await fetch(`/api/chat/${selectedChat.id}/messages/?amount=10&limit=${selectedChat.messages.length}&userID=${user.id}&authToken=${authToken}`)).json())
+        const data = (await (await fetch(`/api/chat/${selectedChat.uid}/messages/?amount=10&limit=${selectedChat.messages.length}&userID=${user.uid}&authToken=${authToken}`)).json())
         selectedChat.remainingMessages = data.remaining == 0
-        data.messages.forEach(message => message.from.id != user.id && !message.views.some(view => view == user.id) && socket.emit("message", { groupID: selectedChat.id, id: message.id, action: "view" }))
+        data.messages.forEach(message => message.from.id != user.uid && !message.views.some(view => view == user.uid) && socket.emit("message", { groupID: selectedChat.uid, id: message.id, action: "view" }))
         messageView.scrollBy(0, document.getElementById(selectedChat.messages[0].id).offsetTop)
         selectedChat.messages.unshift(...data.messages)
-        user.chats.splice(user.chats.findIndex(group => group.id == selectedChat.id), 1, selectedChat)
+        user.chats.splice(user.chats.findIndex(group => group.id == selectedChat.uid), 1, selectedChat)
         RenderMessages(false, true, false, ...(data.messages.reverse()))
     }
 })
@@ -168,11 +170,11 @@ socket.on("connect", () => {
         })
         RenderChats(true, false, ...user.chats)
         user.chats.forEach(chat => {
-            const nVM = chat.messages.filter(message => message.from.id != user.id && !message.views.some(view => view == user.id))
+            const nVM = chat.messages.filter(message => message.from.uid != user.uid && !message.views.some(view => view == user.uid))
             nonViewedMessages[chat.id] = nVM.length > 0 ? nVM : undefined
-            ToggleNotification(document.getElementById(chat.id), nVM.length > 0)
+            ToggleNotification(document.getElementById(chat._id), nVM.length > 0)
         })
-        document.getElementById("userName").innerText = `${user.name}-${user.id}`
+        document.getElementById("userName").innerText = `${user.name}-${user.uid}`
     })
 
     socket.on("inviteRecived", invite => {
@@ -193,8 +195,8 @@ socket.on("connect", () => {
     })
 
     socket.on("usersInGroup", response => {
-        user.chats.find(group => group.id == response.id).users = response.users
-        if (response.id == selectedChat?.id) {
+        user.chats.find(chat => chat._id == response.id).users = response.users
+        if (response.id == selectedChat?._id) {
             selectedChat.users = response.users
             const usersParsed = selectedChat.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
             chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
@@ -202,46 +204,44 @@ socket.on("connect", () => {
     })
 
     socket.on("message", response => {
-        const chat = user.chats.find(group => group.id == response.chatID)
+        const chat = user.chats.find(chat => chat._id == response.chatID)
         switch (response.action) {
             case "send":
-                document.getElementById(chat.id).remove()
+                document.getElementById(chat._id).remove()
                 RenderChats(false, true, chat)
                 chat.messages.push(response.message)
-                document.getElementById(chat.id).children[2].innerText = response.message.contentType == "text" ? `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}` : response.message.content.name
-                if (!selectedChat || selectedChat.id != response.chatID) {
+                document.getElementById(chat._id).children[2].innerText = response.message.contentType == "text" ? `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}` : response.message.content.name
+                if (!selectedChat || selectedChat._id != response.chatID) {
                     notificationAudio.play()
-                    nonViewedMessages[response.chatID] = nonViewedMessages[response.chatID] ? new Array(...nonViewedMessages[response.chatID], response.message) : [response.message]
-                    return ToggleNotification(document.getElementById(response.chatID), true)
+                    nonViewedMessages[response.chatUID] = nonViewedMessages[response.chatUID] ? new Array(...nonViewedMessages[response.chatUID], response.message) : [response.message]
+                    return ToggleNotification(document.getElementById(response.chatUID), true)
                 }
                 RenderMessages(false, false, true, response.message)
-                if (response.message.from.id != user.id) 
-                    socket.emit("message", { chatID: selectedChat.id, id: response.message.id, action: "view" });
+                if (response.message.from.uid != user.uid) 
+                    socket.emit("message", { chatUID: selectedChat.uid, id: response.message.id, action: "view" });
                 break;
         
             case "edit":
                 chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].content = response.message.content
                 if (chat.messages[chat.messages.length - 1].id == response.id && chat.messages[chat.messages.length - 1].contentType == "text") 
-                    document.getElementById(chat.id).children[2].innerText = `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}`;
-                if (selectedChat?.id == response.chatID) 
-                    response.message.contentType == "text" ? 
-                        document.querySelector(`#${response.id} .message-content`).innerHTML = parseMessageContent(response.message.content, false) : 
-                        document.querySelector(`#${response.id} .message-content`).innerHTML = (response.message.content.url.includes("image") ? `<img src="${response.message.content.url}" alt="${response.message.content.name}"/>` : `<div class="file"><span>${response.message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${response.message.content.name}" href="${response.message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(response.message.content.description)}</p>`;
+                    document.getElementById(chat._id).children[2].innerText = `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}`;
+                if (selectedChat?._id == response.chatID) 
+                    document.querySelector(`#${response.id} .message-content`).innerHTML = response.message.contentType == "text" ? parseMessageContent(response.message.content, false) :  (response.message.content.url.includes("image") ? `<img src="${response.message.content.url}" alt="${response.message.content.name}"/>` : `<div class="file"><span>${response.message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${response.message.content.name}" href="${response.message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(response.message.content.description)}</p>`;
                 break;
 
             case "delete":
                 if (chat.messages[chat.messages.length - 1].id == response.id) 
-                    document.getElementById(chat.id).children[2].innerText = chat.messages[chat.messages.length - 2] ? chat.messages[chat.messages.length - 2].contentType == "text" ? `${chat.messages[chat.messages.length - 2].content.slice(0, 10) + (chat.messages[chat.messages.length - 2].content.length > 10 ? '...' : '')} ${new Date(chat.messages[chat.messages.length - 2].date).toLocaleTimeString()}` : chat.messages[chat.messages.length - 2].content.name : null;
-                if (selectedChat?.id == response.chatID) 
+                    document.getElementById(chat._id).children[2].innerText = chat.messages[chat.messages.length - 2] ? chat.messages[chat.messages.length - 2].contentType == "text" ? `${chat.messages[chat.messages.length - 2].content.slice(0, 10) + (chat.messages[chat.messages.length - 2].content.length > 10 ? '...' : '')} ${new Date(chat.messages[chat.messages.length - 2].date).toLocaleTimeString()}` : chat.messages[chat.messages.length - 2].content.name : null;
+                if (selectedChat?._id == response.chatID) 
                     document.getElementById(response.id).remove();
                 chat.messages.splice(chat.messages.findIndex(message => message.id == response.id), 1)
                 break;
 
             case "view":
-                chat.messages[chat.messages.findIndex(mesage => mesage.id == response.message.id)].views = response.message.views
+                chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].views = response.message.views
                 break;
         }
-        selectedChat = response.chatID == selectedChat?.id ? chat : selectedChat
+        selectedChat = response.chatID == selectedChat?._id ? chat : selectedChat
     })
 
     socket.on("error", response => {
@@ -268,8 +268,8 @@ function HandleChatEvent(response) {
 
         case "leave":
         case "delete":
-            if (response.id == selectedChat?.id) selectedChat = null
-            user.chats.splice(user.chats.findIndex(chat => chat.id == response.id), 1)
+            if (response.id == selectedChat?._id) selectedChat = null
+            user.chats.splice(user.chats.findIndex(chat => chat._id == response.id), 1)
             document.getElementById(response.id).remove()
             messageView.innerHTML = ''
             messageView.style.display = "none"
@@ -280,7 +280,7 @@ function HandleChatEvent(response) {
 
         case "rename":
             user.chats.find(group => group.id == response.id).name = response.name
-            if (selectedChat.id == response.id) {
+            if (selectedChat.uid == response.id) {
                 selectedChat.name = response.name
                 document.getElementById(response.id).children[0].innerText = response.name
             }
@@ -300,7 +300,7 @@ function ToggleNotification(chatElement, show = true) {
 
 function SendMessageHandle() {
     if (!fileSC.hasAttribute("file") && (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null)) return
-    socket.emit('message', { id: messageInp.getAttribute("messageToEditID"), contentType: fileSC.hasAttribute("file") ? "file" : "text", content: fileSC.hasAttribute("file") ? {...JSON.parse(fileSC.getAttribute("file")), description: messageInp.value } : messageInp.value, chatID: selectedChat.id, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send" })
+    socket.emit('message', { id: messageInp.getAttribute("messageToEditID") || undefined, contentType: fileSC.hasAttribute("file") ? "file" : "text", content: fileSC.hasAttribute("file") ? {...JSON.parse(fileSC.getAttribute("file")), description: messageInp.value } : messageInp.value, chatID: selectedChat._id, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send" })
     messageInp.value = ""
     messageInp.removeAttribute("messageToEditID")
     fileSC.children[0].dispatchEvent(new Event('click'))
@@ -316,29 +316,6 @@ function OpenModal(e) {
     document.getElementById(`${e.target.id || e.path[1].id}-modal`).classList.remove("hidden")
 }
 
-function ChatClickHandle(chat) {
-    if (!selectedChat || selectedChat.id != chat.id) {
-        if (selectedChat) document.getElementById(selectedChat.id).style.backgroundColor = "var(--third-color-theme)"
-        selectedChat = chat
-        const usersParsed = selectedChat.users.map(_user => _user.id == user.id ? "You" : _user.name).join(', ')
-        chatInfo.children[0].innerText = selectedChat.owner ? selectedChat.name : document.getElementById(selectedChat.id).children[0].innerText
-        chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
-        messageView.style.display = "flex"
-        document.getElementById(selectedChat.id).style.backgroundColor = "var(--third-lighten-color-theme)"
-        document.getElementById("messageInput").style.display = "flex"
-        chatInfo.classList.remove("hidden")
-        document.getElementById("messages-placeholder").classList.add("hidden")
-        messageView.classList.remove("hidden")
-        ToggleNotification(document.getElementById(selectedChat.id), false)
-        RenderMessages(true, false, true, ...selectedChat.messages)
-        if (nonViewedMessages[chat.id]) {
-            nonViewedMessages[chat.id].forEach(message => socket.emit("message", { chatID: selectedChat.id, id: message.id, action: "view" }))
-            delete nonViewedMessages[chat.id]
-        }
-
-    }
-}
-
 function ToggleFile(file) {
     fileSC.style.display = !file ? "none" : "flex"
     fileSC.children[1].innerHTML = !file ? null : file.url.includes("image") ? `<img style="width: 44%;" src="${file.url}" alt="${file.name}"/>` : `<svg style="width: 40%;" viewBox="0 0 88 110" width="88" height="110" class=""><path stroke-opacity=".08" stroke="#000" d="M7 2.5h56.929a5.5 5.5 0 0 1 3.889 1.61l15.071 15.072a5.5 5.5 0 0 1 1.611 3.89V104a3.5 3.5 0 0 1-3.5 3.5H7a3.5 3.5 0 0 1-3.5-3.5V6A3.5 3.5 0 0 1 7 2.5z" fill="#FFF" fill-rule="evenodd"></path><path d="M65.5 3.5v15a3 3 0 0 0 3 3h15" stroke-opacity=".12" stroke="#000" fill="#FFF"></path></svg> <h3>${file.name}</h3>`
@@ -348,12 +325,11 @@ function ToggleFile(file) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, message => `${message.from.id != user.id ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<div class="message-content">${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.url.includes("image") ? `<img src="${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}</div>${message.contentType == "text" && message.content.length > 200 ? `<span class="extend-message">See more ${message.content.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
+    RenderElements(messageView.id, message => `${message.from.uid != user.uid ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<div class="message-content">${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.url.includes("image") ? `<img src="${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}</div>${message.contentType == "text" && message.content.length > 200 ? `<span class="extend-message">See more ${message.content.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
         (message, e) => {
             if (e.target.classList.contains("extend-message")) {
                 e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id).content, false)
-                e.target.remove()
-                return
+                return e.target.remove()
             } 
             const userMessage = e.target.closest(".user")
             const menu = document.getElementById("messageConfigs-view")
@@ -362,13 +338,13 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
             menu.children[2].style.display = message.content.url?.includes("image") ? "block" : "none"
             menu.onclick = e => {
                 if (e.target.id == "delete")
-                    socket.emit("message", { chatID: selectedChat.id, id: message.id, action: 'delete' })
+                    return socket.emit("message", { chatID: selectedChat._id, id: message.id, action: 'delete' })
                     
                 if (e.target.id == "edit") {
                     messageInp.setAttribute("messageToEditID", message.id)
                     messageInp.value = message.contentType == "text" ? message.content : message.content.description
                     messageInp.focus()
-                    message.contentType == "file" && ToggleFile(message.content)
+                    return message.contentType == "file" && ToggleFile(message.content)
                 }
 
                 if (e.target.id == "download" && message.content?.url.includes("image")) {
@@ -379,26 +355,42 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                 }
             }
             !userMessage?.getAttribute("viewID") && userMessage.setAttribute("viewID", "messageConfigs")
-        }, message => ["message", message.from.id == user.id  ? "user" : null], ...messages)
+        }, message => ["message", message.from.uid == user.uid  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
 
 function RenderChats(clear, prepend, ...chats) { 
-    RenderElements("data-view", chat => `<span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.id != user.id).name}</span><span></span><span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, prepend, 
+    RenderElements("data-view", chat => `<span style="display: inline">${chat.owner ? `${chat.name}-${chat.uid}`: chat.users.find(_user => _user.uid != user.uid).name}</span><span></span><span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, clear, prepend, 
     (chat, e) => {
-        ChatClickHandle(chat)
+        if (!selectedChat || (selectedChat._id !== chat._id)) {
+            if (selectedChat) document.getElementById(selectedChat._id).style.backgroundColor = "var(--third-color-theme)"
+            selectedChat = chat
+            const usersParsed = selectedChat.users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
+            chatInfo.children[0].innerText = selectedChat.owner ? selectedChat.name : document.getElementById(selectedChat.uid).children[0].innerText
+            chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
+            messageView.style.display = "flex"
+            document.getElementById(selectedChat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
+            document.getElementById("messageInput").style.display = "flex"
+            chatInfo.classList.remove("hidden")
+            document.getElementById("messages-placeholder").classList.add("hidden")
+            messageView.classList.remove("hidden")
+            ToggleNotification(document.getElementById(selectedChat._id), false)
+            RenderMessages(true, false, true, ...selectedChat.messages)
+            if (nonViewedMessages[chat._id]) {
+                nonViewedMessages[chat._id].forEach(message => socket.emit("message", { chatUID: selectedChat.uid, id: message.id, action: "view" }))
+                delete nonViewedMessages[chat._id]
+            }
+    
+        }
         if (e.target.tagName == "svg" || e.target.tagName == "path") {
             const menu = document.getElementById("groupConfigs-view")
-            menu.children[0].id = chat.owner == user.id ? "delete" : "leave"
-            menu.children[0].innerText = chat.owner == user.id ? "Delete" : "Leave"
-            menu.children[1].style.display = chat.owner == user.id ? "block" : "none"
+            menu.children[0].id = chat.owner == user.uid ? "delete" : "leave"
+            menu.children[0].innerText = chat.owner == user.uid ? "Delete" : "Leave"
+            menu.children[1].style.display = chat.owner == user.uid ? "block" : "none"
             menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
             menu.style.left = e.pageX + "px"
             menu.onclick = e => {
-                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat.id, action: e.target.id })
-                document.getElementById("groupName").value = chat.name
-                document.getElementById("groupDescription").value = chat.description
-                document.getElementById("groupID").value = chat.id
+                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat._id, action: e.target.id })
                 OpenModal({ target: { id: "groupEdit" } })
             }
         }
@@ -422,7 +414,7 @@ function RenderElements(viewID, innerHTML, clear, prepend, onclick, classList, .
     if (clear) viewElement.innerHTML = ''
     elements.forEach(element => {
         const elementToRender = document.createElement("div")
-        elementToRender.id = element.id
+        elementToRender.id = element._id || element.id
         elementToRender.innerHTML = innerHTML(element)
         if (classList) elementToRender.className = classList(element).join(' ')
         if (onclick) elementToRender.addEventListener('click', e => onclick(element, e))

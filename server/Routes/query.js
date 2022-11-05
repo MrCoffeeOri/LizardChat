@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { users, groups } from '../DB.js'
 
 export const queryRouter = Router()
     .get("/:table/:limit/:chars", async (req, res) => {

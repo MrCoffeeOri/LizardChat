@@ -546,18 +546,18 @@ svg:active { transform: scale(1.1); }
     width: 95%;
     background-color: white;
     height: 0.3vh;
-    margin: 0 0 5% 2%;
+    margin: 0 0 3.5% 2%;
 }
 
-#error-card p { margin: 10px; }
+#error-card p { margin: 16px 10px 0 10px; }
 
 #error-card span {
     position: absolute;
-    right: -6%;
-    top: -9%;
+    right: -1%;
+    top: -4%;
     background-color: var(--error-card-color);
     border-radius: 50%;
-    padding: 0 6px;
+    padding: 0 5px;
 }
 
 #error-card span:hover { cursor: pointer; }

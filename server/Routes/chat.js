@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { dms, groups, users } from "../DB.js";
 
 export const chatRouter = Router()
     .get('/:id', GroupValidation, (req, res) => res.status(200).json({ message: "Success", group: { ...req.chat, messages: undefined, users: req.chat.isPrivate ? undefined : Object.keys(req.chat.users), inviteToken: req.chat.isPrivate ? undefined : req.chat.inviteToken }}))
