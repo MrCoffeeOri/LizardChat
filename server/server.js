@@ -266,4 +266,4 @@ io.on('connection', async socket => {
         socket.disconnect()
     })
 })
-connect(new String(process.env.API_URI), { useNewUrlParser: true, useUnifiedTopology: true }).then(() => server.listen(process.env.PORT || 5000)).catch(error => console.log(error))
+connect(new String(process.env.API_URI).toString(), { useNewUrlParser: true, useUnifiedTopology: true }).then(() => server.listen(process.env.PORT || 5000)).catch(error => console.log(error))
