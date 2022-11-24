@@ -2,7 +2,7 @@ import express, { json } from 'express'
 import cors from 'cors'
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
-import { connect, Types } from 'mongoose'
+import { connect } from 'mongoose'
 import { createServer } from 'http'
 import { LengthUUID, TokenUUID } from './UUID.js'
 import { userRouter } from './Routes/user.js'
@@ -103,7 +103,9 @@ io.on('connection', async socket => {
             return socket.emit('group', { group: objGroup, action: data.action })
         }
         const group = await Group.findById(data.id)
-        if (!group) return socket.emit('error', { error: 'Invalid group' })
+        if (!group) 
+            return socket.emit('error', { error: 'Invalid group' })
+
         switch (data.action) {
             case "delete":
                 await group.delete()
@@ -171,15 +173,18 @@ io.on('connection', async socket => {
         const userInvite = await User.findOne({ uid: data.to })
         if (!userInvite || data.to === user.uid)
             return socket.emit("error", { error: 'Invalid user to invite' })
-
+            
         if (await Invite.exists({ "from.uid": user.uid, "to.uid": data.to }))
             return socket.emit("error", { error: 'User already has an invite from you' })
 
         const inviteGroup = await Group.findById(data.groupID)
+        if (!inviteGroup)
+            return socket.emit("error", { error: 'Group does not exist' })
+
         if (inviteGroup.users.some(user => user.uid == data.to))
             return socket.emit("error", { error: 'User is already in the group' })
 
-        const invite = new Invite({ from: { name: user.name, uid: user.uid }, to: { name: userInvite.name, uid: userInvite.uid }, group: { uid: inviteGroup.uid, name: inviteGroup.name, token: inviteGroup.inviteToken } })
+        const invite = new Invite({ from: user.uid, to: userInvite.uid, group: { _id: inviteGroup._id.toString(), token: inviteGroup.inviteToken } })
         const inviteObj = invite.toObject()
         await invite.save()
         user.invites.push(inviteObj)
@@ -187,20 +192,19 @@ io.on('connection', async socket => {
     })
 
     socket.on('handleInvite', async (data) => {
-        const groupID = users.data[user.uid].invites[data._id].group._id
-        if (!groupID || data.token != Group.data[groupID].inviteToken)
+        const invite = await Invite.findById(data._id, { "to.uid": user.uid })
+        if (!invite)
             return socket.emit('error', { error: 'Invalid invite' })
 
+        const group = await Group.findOne({ uid: invite.group.uid, inviteToken: invite.group.token })
         if (data.action == "accept") {
-            users.data[user.uid].groups[groupID] = true
-            Group.data[groupID].users[user.uid] = { name: users.data[user.uid].name, id: user.uid, isOwner: false, isBlocked: false }
-            io.to(groupID).emit('usersInGroup', { users: Object.values(Group.data[groupID].users), id: groupID })
-            await socket.join(groupID)
-            await Group.write()
+            await group.update({ $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } })
+            io.to(group._id.toString()).emit('usersInGroup', { users: group.users, _id: group._id.toString() })
+            await socket.join(group._id.toString())
         }
-        delete users.data[user.uid].invites[data._id]
-        await users.write()
-        socket.emit("inviteHandled",{ inviteID: data._id, chat: data.action == "accept" ? ChatParser(groupID) : undefined })
+        await invite.delete()
+        user.invites = user.invites.filter(_invite => _invite._id == invite._id)
+        socket.emit("inviteHandled", { inviteID: data._id, chat: data.action == "accept" ? group.toObject() : undefined })
     })
 
     socket.on('message', async data => {
@@ -266,4 +270,4 @@ io.on('connection', async socket => {
         socket.disconnect()
     })
 })
-connect(new String(process.env.API_URI).toString(), { useNewUrlParser: true, useUnifiedTopology: true }).then(() => server.listen(process.env.PORT || 5000)).catch(error => console.log(error))
+connect(process.env.API_URI, { useNewUrlParser: true, useUnifiedTopology: true }).then(() => server.listen(process.env.PORT)).catch(error => console.log(error))

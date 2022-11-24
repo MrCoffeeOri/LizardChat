@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createTransport } from "nodemailer";
 import { CfmToken } from "../models/cfmTokens.js";
+import { Group } from "../models/groups.js";
 import { User } from "../models/users.js";
 import { LengthUUID, TokenUUID } from "../UUID.js"
 
@@ -49,13 +50,19 @@ export const userRouter = Router()
         res.status(200).json({ message: "User was authenticated", userID: user.uid, authToken })
     })
     .get("/find/:id", async (req, res) => {
-        if (!users.data[req.params.id])
+        const user = await User.findById(req.params.id)
+        if (!user)
             return res.status(404).json({ error: "User not found" })
+        console.log(user)
+        if (user.isPrivate)
+            return res.status(200).json({ message: "User has a private profile", user: { id: req.params.id, name: user.name, creationDate: user.createdAt } })
 
-        if (users.data[req.params.id].isPrivate)
-            return res.status(200).json({ message: "User has a private profile", user: { id: req.params.id, name: users.data[req.params.id].name, creationDate: users.data[req.params.id].creationDate } })
-
-        res.status(200).json({ message: "User found", user: { id: req.params.id, name: users.data[req.params.id].name, creationDate: users.data[req.params.id].creationDate, groups: users.data[req.params.id].groups } })
+        res.status(200).json({ message: "User found", user: { id: req.params.id, name: user.name, creationDate: user.createdAt, groups: Group.aggregate([
+            { $match: { "users.uid": user.uid } },
+            { $unset: "users" },
+            { $unset: "inviteToken" },
+            { $unset: "messages" },
+        ]) } })
     })
     .get("/confirm", async (req, res) => {
         const cfmToken = await CfmToken.findOneAndDelete({ token: req.query.token })
