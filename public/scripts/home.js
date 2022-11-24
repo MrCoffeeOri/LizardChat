@@ -178,9 +178,9 @@ socket.on("connect", () => {
     })
 
     socket.on("inviteRecived", invite => {
+        if (!document.getElementById("invites-modal").classList.contains("hidden")) return RenderInvites(false, invite)
         notificationAudio.play()
         user.invites.push(invite)
-        if (!document.getElementById("invites-modal").classList.contains("hidden")) return RenderInvites(false, invite)
         inviteNotification.classList.remove("hidden")
         inviteNotification.innerText = user.invites.length
     })
@@ -190,7 +190,7 @@ socket.on("connect", () => {
             user.chats.push(response.chat)
             RenderChats(false, true, response.chat)
         }
-        user.invites.splice(user.invites.findIndex(invite => invite.id == response.inviteID), 1)
+        user.invites = user.invites.filter(invite => invite._id != response.inviteID)
         document.getElementById(response.inviteID)?.remove()
     })
 
@@ -399,9 +399,9 @@ function RenderChats(clear, prepend, ...chats) {
 
 function RenderInvites(clear, ...invites) {
     if (invites.length == 0) return document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">User has no invites</h2>`
-    RenderElements("invites-modal", invite => `<span>${invite.from.name}-${invite.from.id}</span><span>${invite.group.name}</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (invite, e) => {
+    RenderElements("invites-modal", invite => `<span>${invite.from.name}-${invite.from.uid}</span><span>${invite.group.name}Sem nome mesmo kkkk</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (invite, e) => {
         if (e.target.tagName == "BUTTON") {
-            socket.emit("handleInvite", { id: e.path[1].id, token: invite.token, action: e.target.getAttribute("action") })
+            socket.emit("handleInvite", { _id: e.path[1].id, token: invite.token, action: e.target.getAttribute("action") })
             e.path[2].classList.add("hidden")
             document.getElementById("background").classList.add("hidden")
         }
