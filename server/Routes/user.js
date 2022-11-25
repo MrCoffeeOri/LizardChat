@@ -49,15 +49,15 @@ export const userRouter = Router()
 
         res.status(200).json({ message: "User was authenticated", userID: user.uid, authToken })
     })
-    .get("/find/:id", async (req, res) => {
-        const user = await User.findById(req.params.id)
+    .get("/find/:uid", async (req, res) => {
+        const user = await User.findOne({ uid: req.params.uid })
         if (!user)
             return res.status(404).json({ error: "User not found" })
-        console.log(user)
-        if (user.isPrivate)
-            return res.status(200).json({ message: "User has a private profile", user: { id: req.params.id, name: user.name, creationDate: user.createdAt } })
 
-        res.status(200).json({ message: "User found", user: { id: req.params.id, name: user.name, creationDate: user.createdAt, groups: Group.aggregate([
+        if (user.isPrivate)
+            return res.status(200).json({ message: "User has a private profile", user: { uid: req.params.uid, name: user.name, creationDate: user.createdAt } })
+
+        res.status(200).json({ message: "User found", user: { uid: req.params.uid, name: user.name, creationDate: user.createdAt, groups: Group.aggregate([
             { $match: { "users.uid": user.uid } },
             { $unset: "users" },
             { $unset: "inviteToken" },

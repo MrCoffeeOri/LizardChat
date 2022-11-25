@@ -192,11 +192,11 @@ io.on('connection', async socket => {
     })
 
     socket.on('handleInvite', async (data) => {
-        const invite = await Invite.findById(data._id, { "to.uid": user.uid })
+        const invite = await Invite.findOne({ _id: data._id, "to": user.uid })
         if (!invite)
             return socket.emit('error', { error: 'Invalid invite' })
-
-        const group = await Group.findOne({ uid: invite.group.uid, inviteToken: invite.group.token })
+            
+        const group = await Group.findOne({ _id: invite.group._id, inviteToken: invite.group.token })
         if (data.action == "accept") {
             await group.update({ $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } })
             io.to(group._id.toString()).emit('usersInGroup', { users: group.users, _id: group._id.toString() })

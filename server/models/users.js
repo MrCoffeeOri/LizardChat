@@ -16,7 +16,7 @@ export const User = model("User", new Schema({
                 { $match: { uid: uid } },
                 { $lookup: { from: "groups", localField: "uid", foreignField: "users.uid", as: "groups" } }, 
                 { $lookup: { from: "dms", localField: "uid", foreignField: "users.uid", as: "dms" } },
-                { $lookup: { from: "invites", localField: "uid", foreignField: "to.uid", as: "invites" } },
+                { $lookup: { from: "invites", localField: "uid", foreignField: "to", as: "invites" } },
                 { $addFields: { chats: { $concatArrays: ["$groups", "$dms"] } } },
                 { $unset: "groups" },
                 { $unset: "dms" }
