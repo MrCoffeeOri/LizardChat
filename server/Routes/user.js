@@ -57,7 +57,7 @@ export const userRouter = Router()
         if (user.isPrivate)
             return res.status(200).json({ message: "User has a private profile", user: { uid: req.params.uid, name: user.name, creationDate: user.createdAt } })
 
-        res.status(200).json({ message: "User found", user: { uid: req.params.uid, name: user.name, creationDate: user.createdAt, groups: Group.aggregate([
+        res.status(200).json({ message: "User found", user: { uid: req.params.uid, name: user.name, creationDate: user.createdAt, groups: await Group.aggregate([
             { $match: { "users.uid": user.uid } },
             { $unset: "users" },
             { $unset: "inviteToken" },
