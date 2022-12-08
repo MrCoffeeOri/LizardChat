@@ -1,8 +1,8 @@
 # NodeChat
 
 # What is it?
-App made for learning reasons about back-end using Socket.IO, Express, and LowDB (as a temporary Database).
+App made for learning reasons about back-end using Socket.IO, Express, and MongoDB (with mongoose).
 
-# Deployed on heroku: https://nodechatifsp.herokuapp.com
+# Deployed on Railway: https://nodechatifsp.up.railway.app/
 
 ## NodeChat still under development!
