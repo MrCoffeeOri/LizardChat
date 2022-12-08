@@ -29,19 +29,17 @@ input, textarea {
     border-radius: .4rem;
 }
 
-svg {
+aside svg, .message div.file svg, #messageInput svg {
     border-radius: .4rem;
     transition: 400ms ease;
     width: 6%;
     color: white;
 }
 
-svg:hover {
+aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     cursor: pointer;
     color: var(--second-color-theme);
 }
-
-svg:active { transform: scale(1.1); }
 
 ::-webkit-scrollbar {
     width: 3px;
@@ -196,7 +194,11 @@ svg:active { transform: scale(1.1); }
 
 .message div { 
     word-break: break-all; 
-    margin: 2px 0 0 0;
+    margin: 1% 0 0 0;
+}
+
+.message svg:last-child {
+    width: 1vw;
 }
 
 .message > span {
@@ -223,6 +225,7 @@ svg:active { transform: scale(1.1); }
     background-color: var(--second-darken-color-theme);
     border-radius: .3rem;
     padding: 10px;
+    min-width: 32vw;
     justify-content: space-between;
 }
 

@@ -1,4 +1,7 @@
 import { Router } from "express";
+import { User } from "../models/users.js"
+import { Group } from "../models/groups.js"
+import { Dm } from "../models/dms.js"
 
 export const chatRouter = Router()
     .get('/:id', GroupValidation, (req, res) => res.status(200).json({ message: "Success", group: { ...req.chat, messages: undefined, users: req.chat.isPrivate ? undefined : Object.keys(req.chat.users), inviteToken: req.chat.isPrivate ? undefined : req.chat.inviteToken }}))
@@ -16,12 +19,13 @@ function MessageValidation(req, res, next) {
     next()
 }
 
-function GroupValidation(req, res, next) {
-    if (!users.data[req.query.userID] || !users.data[req.query.userID].authToken || users.data[req.query.userID].authToken != req.query.authToken)
+async function GroupValidation(req, res, next) {
+    const user = await User.findOne({ uid: req.query.userUID, authToken: req.query.authToken })
+    if (!user)
         return res.status(401).json({ message: "Invalid authentication token or user does not exist" })
 
-    req.chat = groups.data[req.params.id] || dms.data[req.params.id]
-    if (!req.params.id || !req.chat)
+    req.chat = await Group.findOne({ _id: req.params.id, "users.uid": user.uid }) || await Dm.findOne({ _id: req.params.id, "users.uid": user.uid })
+    if (!req.chat)
         return res.status(404).json({ message: "Chat not found" })
     next()
 }

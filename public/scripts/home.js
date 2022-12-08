@@ -1,7 +1,5 @@
 import { io } from "https://cdn.socket.io/4.4.1/socket.io.esm.min.js";
 
-// TODO: Invite, CHANGE IT!!!
-
 const authToken = new URLSearchParams(window.location.search).get('authToken')
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const socket = io(window.location.host, { auth: { token: authToken, userID: new URLSearchParams(window.location.search).get('userID') } })
@@ -178,9 +176,9 @@ socket.on("connect", () => {
     })
 
     socket.on("inviteRecived", invite => {
-        if (!document.getElementById("invites-modal").classList.contains("hidden")) return RenderInvites(false, invite)
         notificationAudio.play()
         user.invites.push(invite)
+        if (!document.getElementById("invites-modal").classList.contains("hidden")) return RenderInvites(false, invite)
         inviteNotification.classList.remove("hidden")
         inviteNotification.innerText = user.invites.length
     })
@@ -325,16 +323,20 @@ function ToggleFile(file) {
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, message => `${message.from.uid != user.uid ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<div class="message-content">${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.url.includes("image") ? `<img src="${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}</div>${message.contentType == "text" && message.content.length > 200 ? `<span class="extend-message">See more ${message.content.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
+    RenderElements(messageView.id, message => `${message.from.uid != user.uid ? `<p class="message-header">${message.from.name}-${message.from.id}</p>` : '' }<div class="message-content">${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.url.includes("image") ? `<img src="${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}</div>${message.content?.description?.length > 200 || message.content?.length > 200 ? `<span class="extend-message">See more ${message.content?.description?.length - 200 || message.content?.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
         (message, e) => {
             if (e.target.classList.contains("extend-message")) {
-                e.target.previousSibling.innerHTML = parseMessageContent(selectedChat.messages.find(_message => _message.id == e.path[1].id).content, false)
+                const message = selectedChat.messages.find(_message => _message.id == e.path[1].id)
+                if (message.contentType == "text")
+                    e.target.previousSibling.innerHTML = parseMessageContent(message.content, false)
+                else
+                    e.target.previousSibling.children[1].innerHTML = parseMessageContent(message.content.description, false)
                 return e.target.remove()
             } 
             const userMessage = e.target.closest(".user")
             const menu = document.getElementById("messageConfigs-view")
-            menu.style.top = e.pageY + "px"
-            menu.style.left = e.pageX + "px"
+            menu.style.left = e.pageX - (e.pageX + (innerWidth * 0.05) > innerWidth ? (innerWidth * 0.04) : 0) + "px"
+            menu.style.top = e.pageY - (e.pageY + (innerHeight * 0.05) > innerHeight ? (innerHeight * 0.04) : 0) + "px"
             menu.children[2].style.display = message.content.url?.includes("image") ? "block" : "none"
             menu.onclick = e => {
                 if (e.target.id == "delete")
@@ -399,13 +401,17 @@ function RenderChats(clear, prepend, ...chats) {
 
 function RenderInvites(clear, ...invites) {
     if (invites.length == 0) return document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">User has no invites</h2>`
-    RenderElements("invites-modal", invite => `<span>${invite.from.name}-${invite.from.uid}</span><span>${invite.group.name}Sem nome mesmo kkkk</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (invite, e) => {
-        if (e.target.tagName == "BUTTON") {
-            socket.emit("handleInvite", { _id: e.path[1].id, token: invite.token, action: e.target.getAttribute("action") })
-            e.path[2].classList.add("hidden")
-            document.getElementById("background").classList.add("hidden")
-        }
-    }, () => ["invite"], ...invites)
+    document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">Loading invites...</h2>`
+    invites.forEach(async invite => {
+        const fromUser = (await (await fetch(`/api/user/find/${invite.from}`)).json()).user
+        RenderElements("invites-modal", () => `<span>${fromUser.name}-${fromUser.uid}</span><span>${invite.group.name}</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (_, e) => {
+            if (e.target.tagName == "BUTTON") {
+                socket.emit("handleInvite", { _id: e.path[1].id, token: invite.token, action: e.target.getAttribute("action") })
+                e.path[2].classList.add("hidden")
+                document.getElementById("background").classList.add("hidden")
+            }
+        }, () => ["invite"], invite)
+    })
 }
 
 function RenderElements(viewID, innerHTML, clear, prepend, onclick, classList, ...elements) {
