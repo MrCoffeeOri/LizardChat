@@ -19,7 +19,7 @@ const io = new Server(server)
 
 config()
 app.use(json())
-app.use(cors({ origin: 'https://nodechatifsp.herokuapp.com' }))
+app.use(cors({ origin: 'https://nodechat-iu4f.onrender.com' }))
 app.use("/api/chat", chatRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
