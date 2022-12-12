@@ -1,24 +1,19 @@
-import { Router } from 'express'
+import { Router } from "express";
+import { Group } from "../models/groups.js";
+import { User } from "../models/users.js";
 
-export const queryRouter = Router()
-    .get("/:table/:limit/:chars", async (req, res) => {
-        req.params.chars = req.params.chars.toString()
-        const queryTable = req.params.table == "users" ? Object.values(users.data) : req.params.table == "groups" ?  Object.values(groups.data) : undefined
-        if (queryTable == undefined)
-            return res.status(400).json({ message: "Invalid query" })
-            
-        if (isNaN(req.params.limit) || req.params.limit < 0)
-            return res.status(400).json({ message: "Limit is not a number or is negative" })
-        
-        req.params.limit = req.params.limit > queryTable.length ? queryTable.length : req.params.limit
-        let query = []
-        queryTable.forEach(item => {
-            if (item.id == req.params.chars || item.name.includes(req.params.chars) || item.name.includes(req.params.chars.toLowerCase()) || item.name.includes(req.params.chars.toUpperCase())) {
-                query.push(item.isPrivate ? 
-                { id: item.id, name: item.name, creationDate: item.creationDate } 
-                : 
-                { id: item.id, name: item.name, creationDate: item.creationDate, inviteToken: item.inviteToken, groups: item.groups && Object.keys(item.groups).map(groupID => ({ name: groups.data[groupID].name, creationDate: groups.data[groupID].creationDate })), users: item.users && Object.values(item.users) })
-            }
-        })
-        res.status(200).json({ message: "Success", query: query.slice(0, req.params.limit), remaining: Math.max(0, query.length - req.params.limit) })
+export default Router()
+    .get("/:collection/:chars/:limit", async (req, res) => {
+        const collection = req.params.collection == "chats" ? Group : req.params.collection == "users" ? User : null
+        if (!collection)
+            return res.status(400).json({ message: "Collection does not exist" })
+
+        const queryData = await collection.aggregate([
+            { $match: { $and: [{ isPrivate: false }, { $or: [{ uid: req.params.chars }, { name: new RegExp(req.params.chars, "i")}] }] } },
+            { $limit: Number(req.params.limit) }
+        ])
+        if (!queryData.length)
+            return res.status(404).json({ message: "Query not found" })
+
+        res.status(200).json({ message: "Success", query: queryData, remaining: (await collection.count()) - queryData.length })
     })

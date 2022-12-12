@@ -91,9 +91,12 @@ document.querySelector("#search > div > svg").addEventListener('click', () => {
 
 searchInput.addEventListener('keydown', async e => {
     if (e.key == "Enter" && e.target.getAttribute("filter")) {
-        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/20/${e.target.value}`)).json())?.query.filter(rd => rd.id != user.uid && !user.chats.some(chat => chat.id == rd.id))
-        if (!query.length || query.length == 0) return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
-        RenderElements("data-view", queryData => `<p style="text-align: center;" class="search-user">${queryData.name}-${queryData.id}</p>`, true, false, queryData => {
+        document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Loading query...</h3>`
+        const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/${e.target.value}/20`)).json())?.query?.filter(rd => rd.uid != user.uid && !user.chats.some(chat => chat.uid == rd.uid))
+        if (!query || !query.length) 
+            return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
+            
+        RenderElements("data-view", queryData => `<p style="text-align: center;" class="search-user">${queryData.name}-${queryData.uid}</p>`, true, false, queryData => {
             const queryDataViewElement = document.getElementById("queryData-view")
             const closeView = () => {
                 queryDataViewElement.style.width = 0
@@ -102,12 +105,12 @@ searchInput.addEventListener('keydown', async e => {
             queryDataViewElement.style.width = "68.15%"
             queryDataViewElement.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" width="50" height="35" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/></svg>
-                <h1>${queryData.name}-${queryData.id}</h1>
+                <h1>${queryData.name}-${queryData.uid}</h1>
                 <button>${queryData.inviteToken ? "Join" : "Send message"}</button>
             `
             queryDataViewElement.children[0].onclick = closeView
             queryDataViewElement.children[2].onclick = () => {
-                queryData.inviteToken ? socket.emit("group", { action: "join", token: queryData.inviteToken, id: queryData.id }) : socket.emit("DM", { action: "create", userID: queryDataViewElement.children[1].innerText.split('-')[1] })
+                queryData.inviteToken ? socket.emit("group", { action: "join", token: queryData.inviteToken, uid: queryData.uid }) : socket.emit("DM", { action: "create", userID: queryDataViewElement.children[1].innerText.split('-')[1] })
                 closeView()
                 searchInput.value = ''
             }
@@ -406,7 +409,7 @@ function RenderInvites(clear, ...invites) {
         const fromUser = (await (await fetch(`/api/user/find/${invite.from}`)).json()).user
         RenderElements("invites-modal", () => `<span>${fromUser.name}-${fromUser.uid}</span><span>${invite.group.name}</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (_, e) => {
             if (e.target.tagName == "BUTTON") {
-                socket.emit("handleInvite", { _id: e.path[1].id, token: invite.token, action: e.target.getAttribute("action") })
+                socket.emit("handleInvite", { _id: e.path[1].id, group: invite.group, action: e.target.getAttribute("action") })
                 e.path[2].classList.add("hidden")
                 document.getElementById("background").classList.add("hidden")
             }

@@ -3,7 +3,7 @@ import { User } from "../models/users.js"
 import { Group } from "../models/groups.js"
 import { Dm } from "../models/dms.js"
 
-export const chatRouter = Router()
+export default Router()
     .get('/:id', GroupValidation, (req, res) => res.status(200).json({ message: "Success", group: { ...req.chat, messages: undefined, users: req.chat.isPrivate ? undefined : Object.keys(req.chat.users), inviteToken: req.chat.isPrivate ? undefined : req.chat.inviteToken }}))
     .get('/:id/messages', GroupValidation, MessageValidation, (req, res) => res.status(200).json({ message: "Success", messages: req.messages.slice(Math.max(req.messages.length - req.query.limit - req.query.amount, 0), req.messages.length - req.query.limit <= 0 ? req.messages.length : req.messages.length - req.query.limit), remaining: Math.max(0, req.messages.length - req.query.limit - req.query.amount) }))
     .get('/:id/messages/find', GroupValidation, MessageValidation, (req, res) => {
