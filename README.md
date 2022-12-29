@@ -1,4 +1,4 @@
-# LizardChat
+# LizardChat 🦎
 
 # What is it?
 App made for learning reasons about back-end using Socket.IO, Express, and MongoDB (with mongoose).
