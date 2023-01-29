@@ -21,9 +21,6 @@ export default Router()
 
         if (!req.body.password.match(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/g))
             return res.status(400).json({ error: "Minimum eight characters, at least one letter and one number" })
-
-        if (!req.body.name.match(/[\W]/g))
-            return res.status(400).json({ error: "Invalid user name" })
         
         if (await User.exists({ $or: [{ email: req.body.email }, { name: req.body.name }] }))
             return res.status(403).json({ error: "Email or name already used" })
