@@ -32,11 +32,11 @@ document.getElementById("modal").children[2].addEventListener("click", e => {
     `
         <div>
             <label for="emailInp">Email</label>
-            <input required type="email" id="emailInp" />
+            <input placeholder=" " required type="email" id="emailInp" />
         </div>
         <div>
             <label for="passwordInp">Password</label>
-            <input required type="password" id="passwordInp" />
+            <input placeholder=" " required type="password" id="passwordInp" />
         </div>
         <button>Login</button>
     `
@@ -44,19 +44,19 @@ document.getElementById("modal").children[2].addEventListener("click", e => {
     `
         <div>
             <label for="emailInp">Email</label>
-            <input required type="email" id="emailInp">
+            <input placeholder=" " required type="email" id="emailInp">
         </div>
         <div>
             <label for="passwordInp">Password</label>
-            <input required type="password" id="passwordInp">
+            <input placeholder=" " required type="password" id="passwordInp">
         </div>
         <div>
             <label for="repeatPasswordInp">Repeat password</label>
-            <input required type="password" id="repeatPasswordInp">
+            <input placeholder=" " required type="password" id="repeatPasswordInp">
         </div>
         <div>
             <label for="nickNamelInp">Nickname</label>
-            <input required type="text" id="nickNamelInp">
+            <input placeholder=" " required type="text" id="nickNamelInp">
         </div>
         <button>Create account</button>
     `
@@ -67,8 +67,9 @@ document.getElementById("modal").children[2].addEventListener("click", e => {
 function HanleUserAuth(e) {
     e.json().then(_e => {
         !e.ok && window.localStorage.clear()
+        console.log(_e.authToken, _e.userUID)
         ShowInfoMessage(_e.message || _e.error, e.ok ? "var(--second-darken-color-theme)" : "red")
-        if (_e.userID && _e.authToken) window.location.href = `/home.html?authToken=${_e.authToken}&userID=${_e.userID}`
+        if (_e.userUID && _e.authToken) window.location.href = `/home.html?authToken=${_e.authToken}&userID=${_e.userUID}`
     })
 }
 

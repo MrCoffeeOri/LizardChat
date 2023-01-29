@@ -1,9 +1,18 @@
+import crypto from "crypto"
 import { Router } from "express";
 import { createTransport } from "nodemailer";
-import { CfmToken } from "../models/cfmTokens.js";
-import { Group } from "../models/groups.js";
-import { User } from "../models/users.js";
-import { LengthUUID, TokenUUID } from "../UUID.js"
+import { ConfirmationToken } from "../models/cfmToken.model.js";
+import { Group } from "../models/group.model.js";
+import { User } from "../models/user.model.js";
+import { LengthUUID } from "../../helpers/UUID.js"
+
+const tranport = createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false,
+    auth: { user: process.env.EMAIL_USER, pass: process.env.PASSWORD_USER },
+    tls: { rejectUnauthorized: false }
+})
 
 export default Router()
     .post("/create", async (req, res) => {
@@ -16,20 +25,14 @@ export default Router()
         if (!req.body.name.match(/[\W]/g))
             return res.status(400).json({ error: "Invalid user name" })
         
-        if (await User.exists({ email: req.body.email }))
-            return res.status(403).json({ error: "Email already used" })
+        if (await User.exists({ $or: [{ email: req.body.email }, { name: req.body.name }] }))
+            return res.status(403).json({ error: "Email or name already used" })
 
-        if (await CfmToken.exists({ email: req.body.email }))
+        if (await ConfirmationToken.exists({ email: req.body.email }))
             return res.status(403).json({ error: "Token already sent to " + req.body.email })
             
-        const cfmToken = new CfmToken({ email: req.body.email, password: req.body.password, name: req.body.name })
-        createTransport({
-            host: process.env.EMAIL_HOST,
-            port: process.env.EMAIL_PORT,
-            secure: false,
-            auth: { user: process.env.EMAIL_USER, pass: process.env.PASSWORD_USER },
-            tls: { rejectUnauthorized: false }
-        }).sendMail({
+        const cfmToken = new ConfirmationToken({ email: req.body.email, password: req.body.password, name: req.body.name })
+        tranport.sendMail({
             from: process.env.EMAIL_USER,
             to: req.body.email,
             subject: "Confirmation email",
@@ -45,34 +48,31 @@ export default Router()
         })
     })
     .get("/login/:email/:password", async (req, res) => {
-        const authToken = TokenUUID()
+        const authToken = crypto.randomUUID()
         let user = await User.findOneAndUpdate({ email: req.params.email, password: req.params.password }, { authToken })
         if (!user)
             return res.status(401).json({ message: "Invalid login" })
 
-        res.status(200).json({ message: "User was authenticated", userID: user.uid, authToken })
+        res.status(200).json({ message: "User was authenticated", userUID: user.uid, authToken })
     })
     .get("/find/:uid", async (req, res) => {
         const user = await User.findOne({ uid: req.params.uid })
         if (!user)
             return res.status(404).json({ error: "User not found" })
 
-        if (user.isPrivate)
-            return res.status(200).json({ message: "User has a private profile", user: { uid: req.params.uid, name: user.name, creationDate: user.createdAt } })
-
-        res.status(200).json({ message: "User found", user: { uid: req.params.uid, name: user.name, creationDate: user.createdAt, groups: await Group.aggregate([
+        res.status(200).json({ message: "User found", user: { uid: req.params.uid, name: user.name, creationDate: user.createdAt, chats: user.isPrivate ? undefined : await Group.aggregate([
             { $match: { "users.uid": user.uid } },
             { $unset: "users" },
             { $unset: "inviteToken" },
             { $unset: "messages" },
-        ]) } })
+        ])}})
     })
     .get("/confirm", async (req, res) => {
-        const cfmToken = await CfmToken.findOneAndDelete({ token: req.query.token })
+        const cfmToken = await ConfirmationToken.findOneAndDelete({ token: req.query.token })
         if (!cfmToken)
             return res.status(401).json({ error: "Invalid confirmation token" })
 
-        const user = new User({ name: cfmToken.name, email: cfmToken.email, password: cfmToken.password, uid: LengthUUID((await User.count()) + 1), authToken: TokenUUID() })
+        const user = new User({ name: cfmToken.name, email: cfmToken.email, password: cfmToken.password, uid: LengthUUID((await User.count()) + 1), authToken: crypto.randomUUID() })
         await user.save()
         res.status(200).redirect(`/home.html?authToken=${user.authToken}&userID=${user.id}&firstTime=true`)
     })

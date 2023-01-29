@@ -4,20 +4,21 @@
         <meta charset="UTF-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="icon" href="./assets/node-icon.png" type="image/icon type">
+        <link rel="icon" href="./assets/lizard-icon.webp" type="image/icon type">
         <link rel="stylesheet" href="css/home.css">
         <script src="scripts/home.js" defer type="module"></script>
-        <title>NodeChat</title>
+        <script src="../helpers/UUID.js" defer type="mime"></script>
+        <title>LizardChat</title>
     </head>
     <body id="main-view" style="overflow: hidden;">
         <div id="loading-intro" class="flex-set">
-            <img src="assets/node-icon.png" alt="logo">
-            <h1>NodeChat</h1>
+            <img src="./assets/lizard-icon.webp" alt="logo">
+            <h1>LizardChat</h1>
             <h2>Connecting...</h2>
         </div>
         <div id="background" class="hidden"></div>
         <div id="intro-modal" class="hidden modal">
-            <h1>Welcome to <span>NodeChat</span></h1>
+            <h1>Welcome to <span>LizardChat</span></h1>
             <h3>Thank you for join us!</h3>
         </div>
         <div id="invites-modal" class="hidden modal scrollable">
@@ -57,6 +58,7 @@
         </div>
         <aside>
             <div id="info" class="flex-set">
+                <img src="assets/default.webp" alt="user image">
                 <span id="userName">User Name</span>
                 <div id="invites-notification" class="hidden"></div>
                 <svg id="invites" viewBox="0 0 216 154" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="uniqueElement" x="4.75" y="0.75" width="210.5" height="139.5" rx="15.25" fill="#BBBBBB" stroke="black" stroke-width="1.5"/><path d="M109 72.5L17 1H203L109 72.5Z" fill="#7FB600" stroke="black" stroke-width="1.5"/><path d="M210 136.161L124 61.5" stroke="black"/><path d="M8.72716 135.58L95.4999 61.5" stroke="black"/></svg>
@@ -106,8 +108,8 @@
                 <svg viewBox="0 0 24 24"><path fill="currentColor" d="M1.101 21.757 23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"></path></svg>
             </div>
             <div id="messages-placeholder">
-                <img src="assets/node-icon.png" alt="">
-                <h1>NodeChat</h1>
+                <img src="assets/lizard-icon.webp" alt="">
+                <h1>LizardChat</h1>
             </div>
         </main>
     </body>

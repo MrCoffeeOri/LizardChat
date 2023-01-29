@@ -96,68 +96,6 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     background-color: var(--third-lighten-color-theme);
 }
 
-#info {
-    position: relative;
-    padding: 6px 0;
-    justify-content: space-evenly;
-    border-bottom: 1px solid rgb(255, 255, 255, 0.2);
-}
-
-#options-view {
-    top: 35%;
-    left: 64%;
-}
-
-#invites-view {
-    top: 35%;
-    left: 10%;
-}
-
-#search {
-    background-color: var(--third-color-theme);
-    position: relative;
-    justify-content: space-evenly;
-    padding: 10px 0;
-}
-
-#search ul {
-    top: 50%;
-    left: 84.6%;
-}
-
-#search input {
-    background-color: var(--main-darken-color-theme);
-    padding: 13px 10px;
-    text-align: center;
-    border: none;
-    width: 22.1vw;
-    height: 2.6vh;
-}
-
-#search input::placeholder { color: white; }
-
-#search .flex-set { background-color: var(--main-darken-color-theme); }
-
-#search div {
-    width: 27vw;
-    padding: 0 8px;
-    border-radius: .4rem;
-    background-color: var(--third-color-theme);
-}
-
-#search div svg {
-    display: none;
-    color: var(--second-color-theme);
-    transition: 300ms ease;
-}
-
-#search div svg:hover {
-    cursor: pointer;
-    color: white;
-}
-
-#data-view { height: 88%; }
-
 .group > span:nth-child(2), .group > span:nth-child(3) {
     transition: 400ms ease-in-out;
     color: white;
@@ -172,11 +110,6 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
 }
 
 .group:hover svg { display: block; }
-
-#messages-view {
-    height: 80%;
-    flex-direction: column;
-}
 
 .message {
     box-shadow: 4px 3px 6px black;
@@ -254,6 +187,123 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     color: black;
     align-self: flex-end;
     background-color: var(--second-color-theme);
+}
+
+.modal {
+    border-radius: .4rem;
+    color: white;
+    z-index: 6;
+    text-align: center;
+    position: absolute;
+    background-color: var(--main-darken-color-theme);
+    box-shadow: 4px 4px 20px 0px black;
+}
+
+.modal form { flex-direction: column; }
+
+.modal label {
+    display: block;
+    text-align: start;
+}
+
+.invite {
+    padding: 9px;
+    margin: 5px;
+    border-radius: .4rem;
+    background-color: var(--third-color-theme);
+    border: 2px solid var(--main-darken-color-theme);
+    transition: 200ms ease;
+}
+
+.invite button {
+    border-radius: .4rem;
+    margin: 0 5px;
+    padding: 5px 10px;
+    background-color: var(--second-color-theme);
+    border: none;
+    outline: none;
+    transition: 200ms ease;
+}
+
+.invite button:last-of-type {
+    background-color: red;
+    color: white;
+}
+
+.invite button:hover {
+    cursor: pointer;
+    transform: scale(1.1);
+}
+
+#info {
+    position: relative;
+    padding: 6px 0;
+    justify-content: space-evenly;
+    border-bottom: 1px solid rgb(255, 255, 255, 0.2);
+}
+
+#info img {
+    width: 3vw;
+}
+
+#options-view {
+    top: 35%;
+    left: 64%;
+}
+
+#invites-view {
+    top: 35%;
+    left: 10%;
+}
+
+#search {
+    background-color: var(--third-color-theme);
+    position: relative;
+    justify-content: space-evenly;
+    padding: 10px 0;
+}
+
+#search ul {
+    top: 50%;
+    left: 84.6%;
+}
+
+#search input {
+    background-color: var(--main-darken-color-theme);
+    padding: 13px 10px;
+    text-align: center;
+    border: none;
+    width: 22.1vw;
+    height: 2.6vh;
+}
+
+#search input::placeholder { color: white; }
+
+#search .flex-set { background-color: var(--main-darken-color-theme); }
+
+#search div {
+    width: 27vw;
+    padding: 0 8px;
+    border-radius: .4rem;
+    background-color: var(--third-color-theme);
+}
+
+#search div svg {
+    display: none;
+    color: var(--second-color-theme);
+    transition: 300ms ease;
+}
+
+#search div svg:hover {
+    cursor: pointer;
+    color: white;
+}
+
+#data-view { height: 88%; }
+
+#messages-view {
+    height: 80%;
+    flex-direction: column;
 }
 
 #messageInput {
@@ -369,23 +419,6 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     transition: 300ms ease;
 }
 
-.modal {
-    border-radius: .4rem;
-    color: white;
-    z-index: 6;
-    text-align: center;
-    position: absolute;
-    background-color: var(--main-darken-color-theme);
-    box-shadow: 4px 4px 20px 0px black;
-}
-
-.modal form { flex-direction: column; }
-
-.modal label {
-    display: block;
-    text-align: start;
-}
-
 #newGroup-modal {
     padding: 8px 0;
     width: 25%;
@@ -415,35 +448,6 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     min-width: 20%;
     height: 32%;
     z-index: 5;
-}
-
-.invite {
-    padding: 9px;
-    margin: 5px;
-    border-radius: .4rem;
-    background-color: var(--third-color-theme);
-    border: 2px solid var(--main-darken-color-theme);
-    transition: 200ms ease;
-}
-
-.invite button {
-    border-radius: .4rem;
-    margin: 0 5px;
-    padding: 5px 10px;
-    background-color: var(--second-color-theme);
-    border: none;
-    outline: none;
-    transition: 200ms ease;
-}
-
-.invite button:last-of-type {
-    background-color: red;
-    color: white;
-}
-
-.invite button:hover {
-    cursor: pointer;
-    transform: scale(1.1);
 }
 
 #loading-intro {

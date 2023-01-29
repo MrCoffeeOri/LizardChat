@@ -4,14 +4,14 @@ import { config } from 'dotenv'
 import { Server } from 'socket.io'
 import { connect } from 'mongoose'
 import { createServer } from 'http'
-import { LengthUUID, TokenUUID } from './UUID.js'
+import { LengthUUID } from '../helpers/UUID.js'
 import queryRouter from './Routes/query.js'
 import userRouter from './Routes/user.js'
 import chatRouter from './Routes/chat.js'
-import { Group } from './models/groups.js'
-import { User } from './models/users.js'
-import { Dm } from './models/dms.js'
-import { Invite } from './models/invites.js'
+import { Group } from './models/group.model.js'
+import { User } from './models/user.model.js'
+import { Dm } from './models/dm.model.js'
+import { Invite } from './models/invite.model.js'
 
 const app = express()
 const server = createServer(app)
@@ -19,7 +19,7 @@ const io = new Server(server)
 
 config()
 app.use(json())
-app.use(cors({ origin: 'https://nodechat-iu4f.onrender.com' }))
+app.use(cors())
 app.use("/api/chat", chatRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
@@ -95,7 +95,7 @@ io.on('connection', async socket => {
 
     socket.on('group', async data => {
         if (data.action == "create") {
-            const newGroup = new Group({ name: data.name, uid: LengthUUID((await Group.count()) + 1), description: data.description, owner: user.uid, users: [{ name: user.name, uid: user.uid, isOwner: true, isBlocked: false }] })
+            const newGroup = new Group({ name: data.name, description: data.description, owner: user.uid, users: [{ name: user.name, uid: user.uid, isOwner: true, isBlocked: false }] })
             const objGroup = newGroup.toObject()
             user.chats.push(objGroup)
             await newGroup.save()
@@ -130,7 +130,7 @@ io.on('connection', async socket => {
                 user.groups.push(groupToJoinObj)
                 socket.emit('group', { group: groupToJoinObj, action: data.action })
                 io.to(data.id).emit('usersInGroup', { users: groupToJoinObj.users, id: data.id })
-                await group.update({ users: { $push: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } }, inviteToken: TokenUUID() })
+                await group.update({ users: { $push: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } }, inviteToken: crypto.randomUUID() })
                 await socket.join(data.id)
                 break
 
@@ -184,7 +184,7 @@ io.on('connection', async socket => {
         if (inviteGroup.users.some(user => user.uid == data.to))
             return socket.emit("error", { error: 'User is already in the group' })
 
-        const invite = new Invite({ from: user.uid, to: userInvite.uid, group: { _id: inviteGroup._id.toString(), token: inviteGroup.inviteToken } })
+        const invite = new Invite({ from: user.uid, to: userInvite.uid, group: { _id: inviteGroup._id, token: inviteGroup.inviteToken } })
         const inviteObj = invite.toObject()
         await invite.save()
         user.invites.push(inviteObj)
@@ -192,14 +192,14 @@ io.on('connection', async socket => {
     })
 
     socket.on('handleInvite', async (data) => {
-        const invite = await Invite.findOne({ _id: data._id, "to": user.uid })
+        const invite = await Invite.findOne({ _id: data.id, "to": user.uid })
         if (!invite)
             return socket.emit('error', { error: 'Invalid invite' })
             
-        const group = await Group.findOne({ _id: invite.group._id, inviteToken: invite.group.token })
+        const group = await Group.findOne({ _id: invite.group.id, inviteToken: invite.group.token })
         if (data.action == "accept") {
             await group.update({ $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } })
-            io.to(group._id.toString()).emit('usersInGroup', { users: group.users, _id: group._id.toString() })
+            io.to(group._id.toString()).emit('usersInGroup', { users: group.users, id: group._id.toString() })
             await socket.join(group._id.toString())
         }
         await invite.delete()
@@ -212,6 +212,7 @@ io.on('connection', async socket => {
         if (!chat)
             return socket.emit("error", { error: `Invalid chat` })
 
+        console.log(data)
         if (data.action != "send" && (!data.id || !chat.messages.some(message => message.id == data.id)))
             return socket.emit("error", { error: 'Message deleted or missing ID' })
 
@@ -221,7 +222,7 @@ io.on('connection', async socket => {
         let message = undefined
         switch (data.action) {
             case "send":
-                message = { from: { name: user.name, uid: user.uid }, contentType: data.contentType, id: LengthUUID(chat.messages.length), content: data.content, views: [user.uid], date: new Date() }
+                message = { from: { name: user.name, uid: user.uid }, contentType: data.contentType, id: data.id, content: data.content, views: [user.uid], date: new Date() }
                 chat.messages.push(message)
                 break
 
