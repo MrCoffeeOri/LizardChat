@@ -137,7 +137,7 @@ io.on('connection', async socket => {
     socket.on('invite', async data => {
         switch (data.action) {
             case "create":
-                if (await Invite.exists({ "from.uid": user.uid, "to.uid": data.to })) return 
+                if (await Invite.exists({ from: user.uid, to: data.to })) return 
                 const userInvite = await User.findOne({ uid: data.to })
                 if (checkError(userInvite) || data.to === user.uid) return
                 const inviteGroup = await Group.findById(data.groupID)
