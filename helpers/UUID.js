@@ -1,5 +1,4 @@
-const RandomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1) + min)
-const CharsSequence = index => String.fromCharCode(RandomBetween(97, 122)) + RandomBetween(1 * index, 100) + String.fromCharCode(RandomBetween(65, 90))
+const RandomBetween = (min, max) => Math.abs(Math.floor(Math.random() * (max - min + 1) + min))
 
 /**
  * Generates a random ID based on the given length, human friendly.
@@ -7,8 +6,5 @@ const CharsSequence = index => String.fromCharCode(RandomBetween(97, 122)) + Ran
  * @returns string
  */
 export function LengthUUID(length) {
-    let UUIDchars = ''
-    UUIDchars += CharsSequence(length)
-    UUIDchars += RandomBetween(length, 100)
-    return UUIDchars
+    return String.fromCharCode(RandomBetween(97, 122)) + RandomBetween(length, 100) + String.fromCharCode(RandomBetween(65, 90)) + RandomBetween(length, 100)
 }

@@ -143,7 +143,7 @@ messageView.addEventListener('scroll', async e => {
         data.messages.forEach(message => message.from.id != user.uid && !message.views.some(view => view == user.uid) && socket.emit("message", { groupID: selectedChat.uid, id: message.id, action: "view" }))
         messageView.scrollBy(0, document.getElementById(selectedChat.messages[0].id).offsetTop)
         selectedChat.messages.unshift(...data.messages)
-        user.chats.splice(user.chats.findIndex(group => group.id == selectedChat.uid), 1, selectedChat)
+        user.chats.splice(user.chats.findIndex(group => group._id == selectedChat._id), 1, selectedChat)
         RenderMessages(false, true, false, ...(data.messages.reverse()))
     }
 })
@@ -152,7 +152,7 @@ document.getElementById("sendInviteForm").addEventListener('submit', e => {
     e.preventDefault()
     e.path[1].classList.add("hidden")
     document.getElementById("background").classList.add("hidden")
-    socket.emit('createInvite', { to: e.target[0].value, groupID: e.target[1].value, action: "create" })
+    socket.emit('invite', { to: e.target[0].value, groupID: e.target[1].value, action: "create" })
     e.target[0].value = ''
     e.target[1].value = ''
 })
@@ -176,21 +176,25 @@ socket.on("connect", () => {
         info.children[1].innerText = `${user.name}@${user.uid}`
     })
 
-    socket.on("inviteRecived", invite => {
-        notificationAudio.play()
-        user.invites.push(invite)
-        if (!document.getElementById("invites-modal").classList.contains("hidden")) return RenderInvites(false, invite)
-        inviteNotification.classList.remove("hidden")
-        inviteNotification.innerText = user.invites.length
-    })
+    socket.on("invite", response => {
+        switch (response.action) {
+            case "recived":
+                notificationAudio.play()
+                user.invites.push(response.invite)
+                if (!document.getElementById("invites-modal").classList.contains("hidden")) return RenderInvites(false, response.invite)
+                inviteNotification.classList.remove("hidden")
+                inviteNotification.innerText = user.invites.length
+                break;
 
-    socket.on("inviteHandled", response => {
-        if (response.chat) {
-            user.chats.push(response.chat)
-            RenderChats(false, true, response.chat)
+            case "handled":
+                if (response.chat) {
+                    user.chats.push(response.chat)
+                    RenderChats(false, true, response.chat)
+                }
+                user.invites = user.invites.filter(invite => invite.id != response.inviteID)
+                document.getElementById(response.inviteID)?.remove()
+                break;
         }
-        user.invites = user.invites.filter(invite => invite.id != response.inviteID)
-        document.getElementById(response.inviteID)?.remove()
     })
 
     socket.on("usersInGroup", response => {
@@ -222,19 +226,19 @@ socket.on("connect", () => {
                 break;
         
             case "edit":
-                chat.messages[chat.messages.findIndex(message => message.id == response.id)].content = response.message.content
-                if (chat.messages[chat.messages.length - 1].id == response.id && chat.messages[chat.messages.length - 1].contentType == "text") 
+                chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].content = response.message.content
+                if (chat.messages[chat.messages.length - 1].id == response.message.id && chat.messages[chat.messages.length - 1].contentType == "text") 
                     document.getElementById(chat._id).children[2].innerText = `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}`;
                 if (selectedChat?._id == response.chatID) 
-                    document.getElementById(response.id).children[0].innerHTML = response.message.contentType == "text" ? parseMessageContent(response.message.content, false) :  (response.message.content.url.includes("image") ? `<img src="${response.message.content.url}" alt="${response.message.content.name}"/>` : `<div class="file"><span>${response.message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${response.message.content.name}" href="${response.message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(response.message.content.description)}</p>`;
+                    document.getElementById(response.message.id).children[0].innerHTML = response.message.contentType == "text" ? parseMessageContent(response.message.content, false) :  (response.message.content.url.includes("image") ? `<img src="${response.message.content.url}" alt="${response.message.content.name}"/>` : `<div class="file"><span>${response.message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${response.message.content.name}" href="${response.message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(response.message.content.description)}</p>`;
                 break;
 
             case "delete":
-                if (chat.messages[chat.messages.length - 1].id == response.id)
+                if (chat.messages[chat.messages.length - 1].id == response.message.id)
                     document.getElementById(chat._id).children[2].innerText = chat.messages[chat.messages.length - 2] ? chat.messages[chat.messages.length - 2].contentType == "text" ? `${chat.messages[chat.messages.length - 2].content.slice(0, 10) + (chat.messages[chat.messages.length - 2].content.length > 10 ? '...' : '')} ${new Date(chat.messages[chat.messages.length - 2].date).toLocaleTimeString()}` : chat.messages[chat.messages.length - 2].content.name : null;
                 if (selectedChat?._id == response.chatID) 
-                    document.getElementById(response.id).remove();
-                chat.messages.splice(chat.messages.findIndex(message => message.id == response.id), 1)
+                    document.getElementById(response.message.id).remove();
+                chat.messages.splice(chat.messages.findIndex(message => message.id == response.message.id), 1)
                 break;
 
             case "view":
@@ -302,13 +306,12 @@ function ToggleNotification(chat) {
 function SendMessageHandle() {
     if (!fileSC.hasAttribute("file") && (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null)) return
     const rawMessage = { 
-        id: messageInp.getAttribute("messageToEditID") || Math.random(), 
+        id: Number(messageInp.getAttribute("messageToEditID")) || crypto.getRandomValues(new Int16Array(10))[0], 
         contentType: fileSC.hasAttribute("file") ? "file" : "text", 
         content: fileSC.hasAttribute("file") ? {...JSON.parse(fileSC.getAttribute("file")), description: messageInp.value } : messageInp.value, 
         chatID: selectedChat._id, 
-        action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send" 
     }
-    socket.emit('message', rawMessage)
+    socket.emit('message', { ...rawMessage, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send", chatType: selectedChat.owner ? "group" : "dm" })
     !messageInp.hasAttribute("messageToEditID") && RenderMessages(false, false, true, { ...rawMessage, from: { uid: user.uid }, date: new Date() })
     messageInp.value = ""
     messageInp.removeAttribute("messageToEditID")
@@ -405,7 +408,7 @@ function RenderChats(clear, prepend, ...chats) {
             menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
             menu.style.left = e.pageX + "px"
             menu.onclick = e => {
-                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat._id, action: e.target.id })
+                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: null, action: e.target.id })
                 OpenModal({ target: { id: "groupEdit" } })
             }
         }
@@ -417,9 +420,9 @@ function RenderInvites(clear, ...invites) {
     document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">Loading invites...</h2>`
     invites.forEach(async invite => {
         const fromUser = (await (await fetch(`/api/user/find/${invite.from}`)).json()).user
-        RenderElements("invites-modal", () => `<span>${fromUser.name}-${fromUser.uid}</span><span>${invite.group.name}</span><button action="accept">Join</button><button action="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (_, e) => {
+        RenderElements("invites-modal", () => `<span>${fromUser.name}-${fromUser.uid}</span><span>${invite.group.name}</span><button method="accept">Join</button><button method="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (_, e) => {
             if (e.target.tagName == "BUTTON") {
-                socket.emit("handleInvite", { id: e.path[1].id, group: invite.group, action: e.target.getAttribute("action") })
+                socket.emit("invite", { id: e.path[1].id, group: invite.group, action: "handle", method: e.target.getAttribute("method") })
                 e.path[2].classList.add("hidden")
                 document.getElementById("background").classList.add("hidden")
             }

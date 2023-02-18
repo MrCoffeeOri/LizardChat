@@ -1,7 +1,6 @@
 import { Schema, model } from "mongoose"
 
 export const Dm = model("Dm", new Schema({
-    name: String,
     block: { 
         type: { 
             by: String, 
@@ -12,11 +11,12 @@ export const Dm = model("Dm", new Schema({
         default: null
     },
     users: { 
-        type: Array, 
-        default: [] 
+        type: Array,
+        required: true
     },
     messages: { 
-        type: Array, 
+        type: Array,
+        required: true, 
         default: [] 
     }
 }, { timestamps: true }))

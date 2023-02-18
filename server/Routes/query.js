@@ -11,8 +11,7 @@ export default Router()
         const queryData = await collection.aggregate([
             { $match: { $and: [{ isPrivate: false }, { $or: [{ uid: req.params.chars }, { name: new RegExp(req.params.chars, "i")}] }] } },
             { $limit: Number(req.params.limit) },
-            { $unset: "$password" },
-            { $unset: "$email" }
+            { $unset: ["password", "email"] }
         ])
         if (!queryData.length)
             return res.status(404).json({ message: "Query not found" })
