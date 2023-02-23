@@ -487,7 +487,7 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
 #sendInvite-modal button { margin: 15px auto; }
 
 #chat-info {
-    height: 10%;
+    padding-bottom: 1%;
     text-align: center;
     background-color: var(--third-color-theme);
     color: white;

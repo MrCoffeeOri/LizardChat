@@ -44,7 +44,7 @@ io.on('connection', async socket => {
         next()
     })
 
-    socket.on('DM', async (data) => {
+    socket.on('dm', async (data) => {
         let block = undefined
         let dmObj = undefined
         switch (data.action) {
@@ -69,7 +69,7 @@ io.on('connection', async socket => {
                 if (checkError(await Dm.findOneAndUpdate({ _id: data.id, users: [user.uid], block: null }, { block }))) return
                 break;
         }
-        io.to(data.id).emit("DM", { id: data.id, action: data.action, dm: dmObj, block })
+        io.to(data.id || dmObj._id.toString()).emit("dm", { id: data.id, action: data.action, dm: dmObj, block })
         data.action == "leave" && io.socketsLeave(data.id) 
     })
 
@@ -103,7 +103,7 @@ io.on('connection', async socket => {
                 return await socket.join(data.id)
 
             case "leave":
-                if (checkError(await Group.findByIdAndUpdate(data.id, { $pull: { "users.uid": user.uid } }))) return
+                if (checkError(await Group.findByIdAndUpdate(data.id, { $pull: { users: { uid: user.uid } } }))) return
                 user.chats = user.chats.filter(chat => chat._id != data.id)
                 io.to(data.id).emit('userInGroup', { userUID: user.uid, id: data.id })
                 return await socket.leave(data.id)
@@ -140,9 +140,9 @@ io.on('connection', async socket => {
                 if (await Invite.exists({ from: user.uid, to: data.to })) return 
                 const userInvite = await User.findOne({ uid: data.to })
                 if (checkError(userInvite) || data.to === user.uid) return
-                const inviteGroup = await Group.findById(data.groupID)
+                const inviteGroup = await Group.findById(data.chatID)
                 if (checkError(inviteGroup)) return
-                const invite = new Invite({ from: user.uid, to: userInvite.uid, group: { _id: inviteGroup._id, token: inviteGroup.inviteToken } })
+                const invite = new Invite({ from: user.uid, to: userInvite.uid, description: "bababui", group: { _id: inviteGroup._id, token: inviteGroup.inviteToken } })
                 const inviteObj = invite.toObject()
                 await invite.save()
                 user.invites.push(inviteObj)
@@ -152,13 +152,12 @@ io.on('connection', async socket => {
 
             case "handle":
                 //TODO!: Remove the group messages
-
                 const handleInvite = await Invite.findOneAndDelete({ _id: data.id, "to": user.uid })
                 let group = null
                 if (checkError(handleInvite)) return
                 if (data.method == "accept") {
                     group = await Group.findOneAndUpdate({ _id: handleInvite.group.id, inviteToken: handleInvite.group.token }, { $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } }, { returnDocument: "after" })
-                    io.to(group._id.toString()).emit('userInGroup', { user: user.uid, id: group._id.toString() })
+                    io.to(group._id.toString()).emit('userInGroup', { userUID: user.uid, id: group._id.toString() })
                     await socket.join(group._id.toString())
                 }
                 user.invites = user.invites.filter(_invite => _invite._id == handleInvite._id)
@@ -172,7 +171,7 @@ io.on('connection', async socket => {
         const filter = {
             _id: data.chatID, 
             "users.uid": user.uid,
-            ...(data.action != "send" && { "messages.id": data.id, ...(data.action == "view" && { "messages.from.uid": user.uid }) }), 
+            ...(data.action != "send" && { "messages.id": data.id, ...(data.action == "view" && { "messages.from.uid": { $not: { $eq: user.uid } } }) }), 
         }
         const update = {
             ...(data.action == "send" && { $push: { messages: { from: { name: user.name, uid: user.uid }, contentType: data.contentType, id: data.id, content: data.content, views: [user.uid], date: new Date() } } }),

@@ -61,7 +61,7 @@ document.querySelectorAll("#options-view li").forEach(li => li.addEventListener(
         user.chats.forEach(chat => {
             if (chat?.owner == user.uid) {
                 selection.appendChild(document.createElement("option"))
-                selection.lastChild.value = chat.id
+                selection.lastChild.value = chat._id
                 selection.lastChild.innerHTML = chat.name
             }
         })
@@ -96,7 +96,7 @@ searchInput.addEventListener('keydown', async e => {
         if (!query || !query.length) 
             return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
             
-        RenderElements("data-view", queryData => `<p style="text-align: center;" class="search-user">${queryData.name}-${queryData.uid}</p>`, true, false, queryData => {
+        RenderElements("data-view", queryData => `<p style="text-align: center;" class="search-user">${queryData.name}${'@'+queryData.uid}</p>`, true, false, queryData => {
             const queryDataViewElement = document.getElementById("queryData-view")
             const closeView = () => {
                 queryDataViewElement.style.width = 0
@@ -105,12 +105,12 @@ searchInput.addEventListener('keydown', async e => {
             queryDataViewElement.style.width = "68.15%"
             queryDataViewElement.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" width="50" height="35" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/></svg>
-                <h1>${queryData.name}-${queryData.uid}</h1>
+                <h1>${queryData.name}${'@'+queryData.uid}</h1>
                 <button>${queryData.inviteToken ? "Join" : "Send message"}</button>
             `
             queryDataViewElement.children[0].onclick = closeView
             queryDataViewElement.children[2].onclick = () => {
-                queryData.inviteToken ? socket.emit("group", { action: "join", token: queryData.inviteToken, uid: queryData.uid }) : socket.emit("DM", { action: "create", userID: queryDataViewElement.children[1].innerText.split('-')[1] })
+                queryData.owner ? socket.emit("group", { action: "join", token: queryData.inviteToken, uid: queryData.uid }) : socket.emit("dm", { action: "create", userUID: queryData.uid })
                 closeView()
                 searchInput.value = ''
             }
@@ -152,7 +152,7 @@ document.getElementById("sendInviteForm").addEventListener('submit', e => {
     e.preventDefault()
     e.path[1].classList.add("hidden")
     document.getElementById("background").classList.add("hidden")
-    socket.emit('invite', { to: e.target[0].value, groupID: e.target[1].value, action: "create" })
+    socket.emit('invite', { to: e.target[0].value, chatID: e.target[1].value, action: "create" })
     e.target[0].value = ''
     e.target[1].value = ''
 })
@@ -197,12 +197,15 @@ socket.on("connect", () => {
         }
     })
 
-    socket.on("usersInGroup", response => {
-        user.chats.find(chat => chat._id == response.id).users = response.users
+    socket.on("userInGroup", async response => {
+        const resUser = await (await fetch(`/api/user/find/${response.userUID}`)).json()
+        if (!resUser.user)
+            return ShowErrorCard(resUser.error)
+
+        user.chats.find(chat => chat._id == response.id).users.push(resUser.user)
         if (response.id == selectedChat?._id) {
-            selectedChat.users = response.users
-            const usersParsed = selectedChat.users.map(_user => _user.name == user.name ? "You" : _user.name).join(', ')
-            chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
+            selectedChat.users.push(resUser.user)
+            chatInfo.children[1].innerText = (chatInfo.children[1].innerText + ", " + resUser.user.name).slice(0, 50) + (chatInfo.children[1].innerText.length > 50 ? "..." : '')
         }
     })
 
@@ -217,10 +220,10 @@ socket.on("connect", () => {
                 if (!selectedChat || selectedChat._id != response.chatID) {
                     notificationAudio.play()
                     chat.newMessages++
-                    return ToggleNotification(document.getElementById(response.chatID), true)
+                    return ToggleNotification(chat, true)
                 }
                 if (response.message.from.uid != user.uid) {
-                    socket.emit("message", { chatID: selectedChat.uid, id: response.message.id, action: "view" }) 
+                    socket.emit("message", { chatID: selectedChat._id, id: response.message.id, chatType: chat.owner ? "group" : "dm", action: "view" }) 
                     RenderMessages(false, false, true, response.message)
                 }
                 break;
@@ -258,7 +261,7 @@ socket.on("connect", () => {
         window.location.href = "/disconnected.html"
     })
 
-    socket.on("DM", HandleChatEvent)
+    socket.on("dm", HandleChatEvent)
     socket.on("group", HandleChatEvent)
 })
 
@@ -379,11 +382,11 @@ function RenderChats(clear, prepend, ...chats) {
     clear, prepend, 
     async (chat, e) => {
         if (!selectedChat || (selectedChat._id != chat._id)) {
-            const chatResponse = await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)
-            if (!chatResponse.ok)
-                return ShowErrorCard(chatResponse.message)
+            const chatResponse = await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)).json()
+            if (!chatResponse.chat)
+                return ShowErrorCard(chatResponse.error)
 
-            selectedChat = { ...chat, ...(await chatResponse.json()).chat }
+            selectedChat = { ...chat, ...chatResponse.chat }
             const usersParsed = selectedChat.users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
             chatInfo.children[0].innerText = selectedChat.owner ? selectedChat.name : document.getElementById(selectedChat.uid).children[0].innerText
             chatInfo.children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
@@ -408,7 +411,7 @@ function RenderChats(clear, prepend, ...chats) {
             menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
             menu.style.left = e.pageX + "px"
             menu.onclick = e => {
-                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: null, action: e.target.id })
+                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat._id, action: e.target.id })
                 OpenModal({ target: { id: "groupEdit" } })
             }
         }

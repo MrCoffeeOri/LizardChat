@@ -16,7 +16,6 @@ export const Group = model("Group", new Schema({
     },
     inviteToken: { 
         type: String, 
-        required: true,
         unique: true,
         default: crypto.randomUUID
     },
@@ -27,12 +26,14 @@ export const Group = model("Group", new Schema({
     },
     users: { 
         type: Array,
-        required: true, 
-        default: [] 
+        required: true
+    },
+    image: {
+        type: String,
+        required: true
     },
     messages: { 
         type: Array,
-        required: true, 
         default: []
     },
 }, { timestamps: true }))

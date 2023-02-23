@@ -7,7 +7,6 @@ export const Dm = model("Dm", new Schema({
             date: Date, 
             reason: String 
         },
-        required: true,
         default: null
     },
     users: { 

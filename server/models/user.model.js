@@ -3,7 +3,7 @@ import { Schema, model } from "mongoose"
 const $chatLookup = (collection) => ({ 
     from: collection, 
     localField: "uid",
-    foreignField: "users.uid",
+    foreignField: collection == "groups" ? "users.uid" : "users",
     as: collection, 
     pipeline: [
         { 
@@ -20,7 +20,7 @@ const $chatLookup = (collection) => ({
                 "messages": { $cond: { if: { $arrayElemAt: ["$messages", -1] }, then: [{ $arrayElemAt: ["$messages", -1] }], else: [] } }
             } 
         },
-        { $unset: ["users", "description", "inviteToken", "isPrivate"] }
+        { $unset: ["description", "inviteToken", "isPrivate"] }
     ]
 })
 
@@ -49,17 +49,14 @@ export const User = model("User", new Schema({
     },
     image: { 
         type: String, 
-        required: true, 
         default: "default" 
     },
     otherInstance: { 
         type: Boolean, 
-        required: true, 
         default: false 
     },
     isPrivate: { 
         type: Boolean, 
-        required: true, 
         default: true 
     }
 }, { 
