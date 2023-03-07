@@ -76,7 +76,7 @@ io.on('connection', async socket => {
     socket.on('group', async data => {
         switch (data.action) {
             case "create":
-                const newGroup = new Group({ name: data.name, description: data.description, owner: user.uid, users: [{ name: user.name, uid: user.uid, isOwner: true, isBlocked: false }] })
+                const newGroup = new Group({ name: data.name, description: data.description, owner: user.uid, image: "default", users: [{ name: user.name, uid: user.uid, isOwner: true, isBlocked: false }] })
                 const newObjGroup = newGroup.toObject()
                 user.chats.push(newObjGroup)
                 await newGroup.save()
