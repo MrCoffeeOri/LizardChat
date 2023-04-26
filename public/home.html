@@ -11,6 +11,7 @@
         <title>LizardChat</title>
     </head>
     <body id="main-view" style="overflow: hidden;">
+        <!-- #region Modals -->
         <div id="loading-intro" class="flex-set">
             <img src="./assets/lizard-icon.webp" alt="logo">
             <h1>LizardChat</h1>
@@ -35,6 +36,10 @@
                     <label for="groupDescription">Description</label>
                     <textarea required id="groupDescription"></textarea>
                 </div>
+                <div>
+                    <label for="groupImage">Image</label>
+                    <input required type="file" id="groupImage">
+                </div>
                 <button>Create</button>
             </form>
         </div>
@@ -56,6 +61,7 @@
                 <input type="range" min="10" max="30" id="requestMessageAmount">
             </div>
         </div>
+        <!-- #endregion -->
         <aside>
             <div id="info" class="flex-set">
                 <img src="assets/default.webp" alt="user image">
@@ -93,7 +99,7 @@
                 <li id="delete">Delete</li>
                 <li id="download">Download</li>
             </ul>
-            <div id="chat-info" class="hidden"><h1></h1><p></p></div>
+            <div id="chat-info" class="hidden flex-set"><img><div style="display: inline-block; margin-left: 1.5%;"><h2 style="margin: 0;"></h2><p></p></div></div>
             <div id="messages-view" class="scrollable hidden"></div>
             <div id="file-showcase" style="display: none;">
                 <span>X</span>

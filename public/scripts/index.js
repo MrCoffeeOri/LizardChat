@@ -67,7 +67,6 @@ document.getElementById("modal").children[2].addEventListener("click", e => {
 function HanleUserAuth(e) {
     e.json().then(_e => {
         !e.ok && window.localStorage.clear()
-        console.log(_e.authToken, _e.userUID)
         ShowInfoMessage(_e.message || _e.error, e.ok ? "var(--second-darken-color-theme)" : "red")
         if (_e.userUID && _e.authToken) window.location.href = `/home.html?authToken=${_e.authToken}&userID=${_e.userUID}`
     })

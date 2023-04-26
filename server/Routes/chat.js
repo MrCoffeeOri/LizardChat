@@ -15,14 +15,15 @@ export default Router()
         message: "Success", 
         chat: { 
             ...req.chat, 
-            messages: req.query.messagesAmmount ? req.chat.messages.slice(-req.query.messagesAmmount) : undefined, 
+            messages: req.query.messagesAmmount ? req.chat.messages.slice(-req.query.messagesAmmount) : undefined,
+            remainingMessages: req.chat.messages.length - req.query.messagesAmmount > 0,
             inviteToken: req.chat.owner == req.query.userUID ? req.chat.inviteToken : undefined 
         }
     }))
     .get("/:id/messages", ChatValidation, MessageValidation, (req, res) => res.status(200).json({ 
         message: "Success", 
         messages: req.chat.messages.slice(Math.max(req.chat.messages.length - req.query.limit - req.query.amount, 0), req.chat.messages.length - req.query.limit <= 0 ? req.chat.messages.length : req.chat.messages.length - req.query.limit), 
-        remaining: Math.max(0, req.chat.messages.length - req.query.limit - req.query.amount) 
+        remaining: req.chat.messages.length - req.query.limit - req.query.amount > 0
     }))
     .get("/:id/messages/find", ChatValidation, MessageValidation, (req, res) => {
         const filterMessages = req.chat.messages.filter(message => message.id == req.query.id || message.text.includes(req.query.text))
@@ -36,12 +37,7 @@ async function MessageValidation(req, res, next) {
 }
 
 async function ChatValidation(req, res, next) {
-    const user = (await User.findOne({ uid: req.query.userUID, authToken: req.query.userAuthToken })).toObject()
-    if (!user)
-        return res.status(403).json({ message: "Invalid User" })
-
-    req.chat = (await Group.findOne({ _id: req.params.id, "users.uid": user.uid }) || await Dm.findOne({ _id: req.params.id, "users.uid": user.uid })).toObject()
-    if (!req.chat)
-        return res.status(404).json({ message: "Chat not found" })
-    next()
+    const filter = { _id: req.params.id, "users.uid": req.query.userUID }
+    req.chat = (await Group.findOne(filter) || await Dm.findOne(filter))?.toObject()
+    return !req.chat ? res.status(404).json({ message: "Chat not found" }) : next()
 }

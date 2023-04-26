@@ -74,7 +74,7 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
 
 .selected { background-color: var(--main-color-theme); }
 
-.hidden { display: none; }
+.hidden, .hidden img { display: none; }
 
 .scrollable {
     overflow-y: auto;
@@ -96,17 +96,23 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     background-color: var(--third-lighten-color-theme);
 }
 
-.group > span:nth-child(2), .group > span:nth-child(3) {
+.group > span:nth-child(3), .group > span:nth-child(4) {
     transition: 400ms ease-in-out;
     color: white;
     font-size: smaller;
 }
 
-.group span:nth-child(2) {
+.group span:nth-child(3) {
     display: none;
     border-radius: 50%;
     background-color: rgb(139, 36, 36);
     padding: 1px 6px;
+}
+
+.group img, #chat-info img {
+    width: 3.5vw;
+    height: 7vh;
+    border-radius: 50%;
 }
 
 .group:hover svg { display: block; }
@@ -487,8 +493,7 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
 #sendInvite-modal button { margin: 15px auto; }
 
 #chat-info {
-    padding-bottom: 1%;
-    text-align: center;
+    padding: 1%;
     background-color: var(--third-color-theme);
     color: white;
 }

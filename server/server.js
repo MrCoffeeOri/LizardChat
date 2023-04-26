@@ -26,6 +26,7 @@ app.use(express.static('public'))
 io.on('connection', async socket => {
     const checkError = document => (document?.errors?.message || !document) && socket.emit('error', { error: document?.errors?.message || "Invalid request"})
     const user = await User.FindByUID(socket.handshake.auth.userID)
+    let tmpImage = ''
     if (!user || user.authToken != socket.handshake.auth.token)
         return socket.emit('error', { error: "Invalid authentication" })
     
@@ -43,6 +44,8 @@ io.on('connection', async socket => {
         }
         next()
     })
+
+    socket.on("file", chunk => tmpImage += chunk)
 
     socket.on('dm', async (data) => {
         let block = undefined
@@ -76,7 +79,7 @@ io.on('connection', async socket => {
     socket.on('group', async data => {
         switch (data.action) {
             case "create":
-                const newGroup = new Group({ name: data.name, description: data.description, owner: user.uid, users: [{ name: user.name, uid: user.uid, isOwner: true, isBlocked: false }] })
+                const newGroup = new Group({ name: data.name, description: data.description, image: tmpImage, owner: user.uid, users: [{ name: user.name, uid: user.uid, isOwner: true, isBlocked: false }] })
                 const newObjGroup = newGroup.toObject()
                 user.chats.push(newObjGroup)
                 await newGroup.save()
@@ -146,23 +149,20 @@ io.on('connection', async socket => {
                 const inviteObj = invite.toObject()
                 await invite.save()
                 user.invites.push(inviteObj)
-                io.to(data.to).emit('invite', { action: "recived", invite: inviteObj })
-                break;
+                return io.to(data.to).emit('invite', { action: "recived", invite: inviteObj })
 
 
             case "handle":
-                //TODO!: Remove the group messages
                 const handleInvite = await Invite.findOneAndDelete({ _id: data.id, "to": user.uid })
                 let group = null
                 if (checkError(handleInvite)) return
                 if (data.method == "accept") {
-                    group = await Group.findOneAndUpdate({ _id: handleInvite.group.id, inviteToken: handleInvite.group.token }, { $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } }, { returnDocument: "after" })
+                    group = await Group.findOneAndUpdate({ _id: handleInvite.group.id, inviteToken: handleInvite.group.token }, { $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } }, { returnDocument: "after", projection: { messages: 0 } })
                     io.to(group._id.toString()).emit('userInGroup', { userUID: user.uid, id: group._id.toString() })
                     await socket.join(group._id.toString())
                 }
                 user.invites = user.invites.filter(_invite => _invite._id == handleInvite._id)
-                socket.emit("invite", { action: "handled", inviteID: data._id, chat: group?.toObject() })
-                break;
+                return socket.emit("invite", { action: "handled", inviteID: data._id, chat: group?.toObject() })
         }
     })
 
@@ -173,12 +173,11 @@ io.on('connection', async socket => {
             "users.uid": user.uid,
             ...(data.action != "send" && { "messages.id": data.id, ...(data.action == "view" && { "messages.from.uid": { $not: { $eq: user.uid } } }) }), 
         }
-        const update = {
-            ...(data.action == "send" && { $push: { messages: { from: { name: user.name, uid: user.uid }, contentType: data.contentType, id: data.id, content: data.content, views: [user.uid], date: new Date() } } }),
-            ...(data.action == "delete" && { $pull: { messages: { id: data.id } } }),
-            ...(data.action == "edit" && { "messages.$[elem].content": data.content }),
-            ...(data.action == "view" && { $push: { "messages.$[elem].views": user.uid } })
-        }
+        const update = 
+            data.action == "send" ? { $push: { messages: { from: { name: user.name, uid: user.uid }, contentType: data.contentType, id: data.id, content: data.content, views: [user.uid], date: new Date() } } } :
+            data.action == "delete" ? { $pull: { messages: { id: data.id } } } :
+            data.action == "edit" ? { "messages.$[elem].content": data.content } :
+            data.action == "view" ? { $push: { "messages.$[elem].views": user.uid } } : null
         const chat = data.chatType == "dm" ? await Dm.findOneAndUpdate({ ...filter,  block: null }, update, options) : await Group.findOneAndUpdate({ ...filter, "users.isBlocked": false }, update, options) 
         if (checkError(chat)) return
         io.to(chat._id.toString()).emit("message", { message: update?.$push?.messages || { id: data.id, date: new Date(), content: data.content, contentType: data.contentType }, chatID: data.chatID, action: data.action })
