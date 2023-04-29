@@ -1,6 +1,7 @@
 import express, { json } from 'express'
 import cors from 'cors'
-import { writeFile, rm } from 'fs/promises'
+import { writeFile, rm, mkdir } from 'fs/promises'
+import { existsSync } from 'fs'
 import crypto from "crypto"
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
@@ -20,6 +21,7 @@ const server = createServer(app)
 const io = new Server(server)
 const uploadPath = `${process.cwd()}/server/uploads/`
 
+!existsSync(uploadPath) && await mkdir(uploadPath)
 config()
 app.use(json())
 app.use(cors())
