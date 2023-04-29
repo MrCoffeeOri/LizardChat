@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { User } from "../models/user.model.js"
 import { Group } from "../models/group.model.js"
 import { Dm } from "../models/dm.model.js"
 
@@ -8,7 +7,6 @@ export default Router()
         const chat = await Group.findOne({ _id: req.params.id, isPrivate: false })
         if (!chat)
             return res.status(404).json({ message: "Chat not found" })
-            
         res.status(200).json({ message: "Success", group: { ...chat, messages: undefined } })
     })
     .get("/:id", ChatValidation, (req, res) => res.status(200).json({ 

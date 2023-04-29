@@ -12,7 +12,7 @@ const loadingIntro = document.getElementById("loading-intro")
 const chatInfo = document.getElementById("chat-info")
 const inviteNotification = document.getElementById("invites-notification")
 const fileSC = document.getElementById("file-showcase")
-const fileStreamLimit = 1000
+const fileChunkSize = 1000
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
 const parseMessageContent = (content, limit = true) => (content.length > 200 && limit ? content.slice(0, 200) + '...' : content)
     .replaceAll(/<|>/g, char => char == '<' ? "&lt;" : "&gt;")
@@ -131,8 +131,9 @@ document.getElementById("newGroupForm").addEventListener('submit', e => {
     e.preventDefault()
     const fileReader = new FileReader()
     fileReader.onloadend = _e => {
-        for (let i = 0; i < _e.target.result.length / fileStreamLimit; i++)
-            socket.emit("file", _e.target.result.slice(fileStreamLimit * i, fileStreamLimit * i + fileStreamLimit))
+        for (let i = 0; i < _e.target.result.length / fileChunkSize; i++)
+            socket.emit("file", _e.target.result.slice(fileChunkSize * i, fileChunkSize * i + fileChunkSize).trim())
+        socket.emit("file", null, true, "png")
         socket.emit('group', { name: e.target[0].value, description: e.target[1].value, action: "create" })
         e.target[0].value = ""
         e.target[1].value = ""
@@ -150,7 +151,7 @@ messageView.addEventListener('scroll', async e => {
         data.messages.forEach(message => message.from.id != user.uid && !message.views.some(view => view == user.uid) && socket.emit("message", { groupID: selectedChat._id, id: message.id, action: "view" }))
         messageView.scrollBy(0, document.getElementById(selectedChat.messages[0].id).offsetTop)
         selectedChat.messages.unshift(...data.messages)
-        user.chats.splice(user.chats.findIndex(group => group._id == selectedChat._id), 1, selectedChat)
+        user.chats[user.chats.findIndex(group => group._id == selectedChat._id)] = selectedChat
         RenderMessages(false, true, false, ...data.messages)
     }
 })
@@ -383,16 +384,16 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
 }
 
 function RenderChats(clear, prepend, ...chats) { 
-    RenderElements("data-view", chat => `<img src="${chat.image}" alt="group image"/><span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.uid != user.uid).name}</span><span></span><span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
+    RenderElements("data-view", chat => `<img src="./api/upload/${chat.image}" alt="group image"/><span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.uid != user.uid).name}</span><span></span><span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
     clear, prepend, 
     async (chat, e) => {
         if (!selectedChat || (selectedChat._id != chat._id)) {
             const chatResponse = !chat.messages?.length && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)).json()).chat
             if (selectedChat) 
-                document.getElementById(selectedChat._id).style = null
+                document.getElementById(selectedChat._id).style.backgroundColor = "var(--third-color-theme)"
             selectedChat = { ...chat, ...chatResponse }
             const usersParsed = selectedChat.users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
-            chatInfo.children[0].src = selectedChat.image
+            chatInfo.children[0].src = `./api/upload/${chat.image}`
             chatInfo.children[1].children[0].innerText = selectedChat.owner ? selectedChat.name : document.getElementById(selectedChat.uid).children[0].innerText
             chatInfo.children[1].children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
             messageView.style.display = "flex"
@@ -416,8 +417,8 @@ function RenderChats(clear, prepend, ...chats) {
             menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
             menu.style.left = e.pageX + "px"
             menu.onclick = e => {
-                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat._id, action: e.target.id })
                 if (e.target.id == "delete") selectedChat = null
+                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat._id, action: e.target.id })
                 OpenModal({ target: { id: "groupEdit" } })
             }
         }

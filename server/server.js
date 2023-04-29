@@ -1,5 +1,7 @@
 import express, { json } from 'express'
 import cors from 'cors'
+import { writeFile, rm } from 'fs/promises'
+import crypto from "crypto"
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
 import { connect } from 'mongoose'
@@ -7,6 +9,7 @@ import { createServer } from 'http'
 import queryRouter from './Routes/query.js'
 import userRouter from './Routes/user.js'
 import chatRouter from './Routes/chat.js'
+import uploadRouter from './Routes/upload.js'
 import { Group } from './models/group.model.js'
 import { User } from './models/user.model.js'
 import { Dm } from './models/dm.model.js'
@@ -15,6 +18,7 @@ import { Invite } from './models/invite.model.js'
 const app = express()
 const server = createServer(app)
 const io = new Server(server)
+const uploadPath = `${process.cwd()}/server/uploads/`
 
 config()
 app.use(json())
@@ -22,11 +26,12 @@ app.use(cors())
 app.use("/api/chat", chatRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
+app.use("/api/upload", uploadRouter)
 app.use(express.static('public'))
 io.on('connection', async socket => {
     const checkError = document => (document?.errors?.message || !document) && socket.emit('error', { error: document?.errors?.message || "Invalid request"})
     const user = await User.FindByUID(socket.handshake.auth.userID)
-    let tmpImage = ''
+    let tmpFile = { data: '', id: null }
     if (!user || user.authToken != socket.handshake.auth.token)
         return socket.emit('error', { error: "Invalid authentication" })
     
@@ -45,7 +50,15 @@ io.on('connection', async socket => {
         next()
     })
 
-    socket.on("file", chunk => tmpImage += chunk)
+    socket.on("file", async (chunk, complete, type) => {
+       if (complete) {
+            tmpFile.id = `${user.uid}@${crypto.randomUUID()}.${type}`
+            await writeFile(uploadPath + tmpFile.id, Buffer.from(tmpFile.data.split(',')[1], 'base64'))
+            tmpFile.data = null
+       }
+       else
+            tmpFile.data += chunk
+    })
 
     socket.on('dm', async (data) => {
         let block = undefined
@@ -79,7 +92,7 @@ io.on('connection', async socket => {
     socket.on('group', async data => {
         switch (data.action) {
             case "create":
-                const newGroup = new Group({ name: data.name, description: data.description, image: tmpImage, owner: user.uid, users: [{ name: user.name, uid: user.uid, isOwner: true, isBlocked: false }] })
+                const newGroup = new Group({ name: data.name, description: data.description, image: tmpFile.id, owner: user.uid, users: [{ name: user.name, uid: user.uid, isOwner: true, isBlocked: false }] })
                 const newObjGroup = newGroup.toObject()
                 user.chats.push(newObjGroup)
                 await newGroup.save()
@@ -87,9 +100,11 @@ io.on('connection', async socket => {
                 return socket.emit('group', { group: newObjGroup, action: data.action })
 
             case "delete":
-                if (checkError(await Group.findOneAndDelete({ _id: data.id, owner: user.uid }))) return
+                const deletGroup = await Group.findOneAndDelete({ _id: data.id, owner: user.uid })
+                if (checkError(deletGroup)) return
                 user.chats = user.chats.filter(chat => chat._id == data.id && chat.owner == user.uid)
                 io.to(data.id).emit('group', { id: data.id, action: data.action })
+                rm(uploadPath + deletGroup.image)
                 return io.socketsLeave(data.id)
             
             case "rename":
