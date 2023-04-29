@@ -328,12 +328,13 @@ function SendMessageHandle() {
 
 function OpenModal(e) {
     const bg = document.getElementById("background")
+    const modal = document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`)
     bg.classList.remove("hidden")
     bg.onclick = () => {
-        document.getElementById(`${e.target.id || e.path[1].id}-modal`).classList.add("hidden")
+        modal.classList.add("hidden")
         bg.classList.add("hidden")
     }
-    document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).classList.remove("hidden")
+    modal.classList.remove("hidden")
 }
 
 function ToggleFile(file) {
