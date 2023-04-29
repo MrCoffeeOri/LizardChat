@@ -145,20 +145,19 @@ document.getElementById("newGroupForm").addEventListener('submit', e => {
 })
 
 messageView.addEventListener('scroll', async e => {
-    if (e.target.scrollTop == 0 && selectedChat && selectedChat.remainingMessages) {
-        const data = (await (await fetch(`/api/chat/${selectedChat._id}/messages/?amount=10&limit=${selectedChat.messages.length}&userUID=${user.uid}&userAuthToken=${authToken}`)).json())
-        selectedChat.remainingMessages = data.remaining
-        data.messages.forEach(message => message.from.id != user.uid && !message.views.some(view => view == user.uid) && socket.emit("message", { groupID: selectedChat._id, id: message.id, action: "view" }))
-        messageView.scrollBy(0, document.getElementById(selectedChat.messages[0].id).offsetTop)
-        selectedChat.messages.unshift(...data.messages)
-        user.chats[user.chats.findIndex(group => group._id == selectedChat._id)] = selectedChat
+    if (e.target.scrollTop == 0 && user.chats[selectedChat] && user.chats[selectedChat].remainingMessages) {
+        const data = (await (await fetch(`/api/chat/${user.chats[selectedChat]._id}/messages/?amount=10&limit=${user.chats[selectedChat].messages.length}&userUID=${user.uid}&userAuthToken=${authToken}`)).json())
+        user.chats[selectedChat].remainingMessages = data.remaining
+        data.messages.forEach(message => message.from.id != user.uid && !message.views.some(view => view == user.uid) && socket.emit("message", { groupID: user.chats[selectedChat]._id, id: message.id, action: "view" }))
+        messageView.scrollBy(0, document.getElementById(user.chats[selectedChat].messages[0].id).offsetTop)
+        user.chats[selectedChat].messages.unshift(...data.messages)
         RenderMessages(false, true, false, ...data.messages)
     }
 })
 
 document.getElementById("sendInviteForm").addEventListener('submit', e => {
     e.preventDefault()
-    e.path[1].classList.add("hidden")
+    e.target.parentElement.classList.add("hidden")
     document.getElementById("background").classList.add("hidden")
     socket.emit('invite', { to: e.target[0].value, chatID: e.target[1].value, action: "create" })
     e.target[0].value = ''
@@ -166,20 +165,20 @@ document.getElementById("sendInviteForm").addEventListener('submit', e => {
 })
 
 socket.on("connect", () => {
-    clearInterval(loadingInterval)
-    loadingIntro.remove()
     socket.on("user", response => {
         const info = document.getElementById("info")
         user = response
         user.chats.sort((a, b) => {
             if (!a.messages[a.messages.length - 1]) return 0
             if (!b.messages[b.messages.length - 1]) return -1
-            return new Date(a.messages[a.messages.length - 1].date) - new Date(b.messages[b.messages.length - 1].date)
+            return new Date(b.messages[b.messages.length - 1].date) - new Date(a.messages[a.messages.length - 1].date)
         })
         RenderChats(true, false, ...user.chats)
         user.chats.forEach(chat => ToggleNotification(chat))
         info.children[0].src = (user.image == "default" || !user.image) ? "../assets/default.webp" : user.image
         info.children[1].innerText = `${user.name}@${user.uid}`
+        clearInterval(loadingInterval)
+        loadingIntro.remove()
     })
 
     socket.on("invite", response => {
@@ -209,8 +208,8 @@ socket.on("connect", () => {
             return ShowErrorCard(resUser.error)
 
         user.chats.find(chat => chat._id == response.id).users.push(resUser.user)
-        if (response.id == selectedChat?._id) {
-            selectedChat.users.push(resUser.user)
+        if (response.id == user.chats[selectedChat]?._id) {
+            user.chats[selectedChat].users.push(resUser.user)
             chatInfo.children[1].innerText = (chatInfo.children[1].innerText + ", " + resUser.user.name).slice(0, 50) + (chatInfo.children[1].innerText.length > 50 ? "..." : '')
         }
     })
@@ -223,13 +222,13 @@ socket.on("connect", () => {
                 RenderChats(false, true, chat)
                 chat.messages.push(response.message)
                 document.getElementById(chat._id).children[3].innerText = response.message.contentType == "text" ? `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}` : response.message.content.name
-                if (!selectedChat || selectedChat._id != response.chatID) {
+                if (selectedChat == null || user.chats[selectedChat]._id != response.chatID) {
                     notificationAudio.play()
                     chat.newMessages++
                     return ToggleNotification(chat, true)
                 }
                 if (response.message.from.uid != user.uid) {
-                    socket.emit("message", { chatID: selectedChat._id, id: response.message.id, chatType: chat.owner ? "group" : "dm", action: "view" }) 
+                    socket.emit("message", { chatID: user.chats[selectedChat]._id, id: response.message.id, chatType: chat.owner ? "group" : "dm", action: "view" }) 
                     RenderMessages(false, false, true, response.message)
                 }
                 break;
@@ -237,15 +236,15 @@ socket.on("connect", () => {
             case "edit":
                 chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].content = response.message.content
                 if (chat.messages[chat.messages.length - 1].id == response.message.id && chat.messages[chat.messages.length - 1].contentType == "text") 
-                    document.getElementById(chat._id).children[2].innerText = `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}`;
-                if (selectedChat?._id == response.chatID) 
+                    document.getElementById(chat._id).children[3].innerText = `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}`;
+                if (user.chats[selectedChat]?._id == response.chatID) 
                     document.getElementById(response.message.id).children[0].innerHTML = response.message.contentType == "text" ? parseMessageContent(response.message.content, false) :  (response.message.content.url.includes("image") ? `<img src="${response.message.content.url}" alt="${response.message.content.name}"/>` : `<div class="file"><span>${response.message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${response.message.content.name}" href="${response.message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(response.message.content.description)}</p>`;
                 break;
 
             case "delete":
                 if (chat.messages[chat.messages.length - 1].id == response.message.id)
-                    document.getElementById(chat._id).children[2].innerText = chat.messages[chat.messages.length - 2] ? chat.messages[chat.messages.length - 2].contentType == "text" ? `${chat.messages[chat.messages.length - 2].content.slice(0, 10) + (chat.messages[chat.messages.length - 2].content.length > 10 ? '...' : '')} ${new Date(chat.messages[chat.messages.length - 2].date).toLocaleTimeString()}` : chat.messages[chat.messages.length - 2].content.name : null;
-                if (selectedChat?._id == response.chatID) 
+                    document.getElementById(chat._id).children[3].innerText = chat.messages[chat.messages.length - 2] ? chat.messages[chat.messages.length - 2].contentType == "text" ? `${chat.messages[chat.messages.length - 2].content.slice(0, 10) + (chat.messages[chat.messages.length - 2].content.length > 10 ? '...' : '')} ${new Date(chat.messages[chat.messages.length - 2].date).toLocaleTimeString()}` : chat.messages[chat.messages.length - 2].content.name : null;
+                if (user.chats[selectedChat]?._id == response.chatID) 
                     document.getElementById(response.message.id).remove();
                 chat.messages.splice(chat.messages.findIndex(message => message.id == response.message.id), 1)
                 break;
@@ -254,7 +253,7 @@ socket.on("connect", () => {
                 chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].views = response.message.views
                 break;
         }
-        selectedChat = response.chatID == selectedChat?._id ? chat : selectedChat
+        user.chats[selectedChat] = response.chatID == user.chats[selectedChat]?._id ? chat : user.chats[selectedChat]
     })
 
     socket.on("error", response => {
@@ -281,8 +280,7 @@ function HandleChatEvent(response) {
 
         case "leave":
         case "delete":
-            if (response.id == selectedChat?.id) selectedChat = null
-            user.chats.splice(user.chats.findIndex(chat => chat.id == response.id), 1)
+            user.chats.splice(selectedChat, 1)
             document.getElementById(response.id).remove()
             messageView.innerHTML = ''
             messageView.style.display = "none"
@@ -292,9 +290,10 @@ function HandleChatEvent(response) {
             break;
 
         case "rename":
+            // TODO: Change the UID param and fix this shit
             user.chats.find(group => group.id == response.id).name = response.name
-            if (selectedChat.uid == response.id) {
-                selectedChat.name = response.name
+            if (user.chats[selectedChat].uid == response.id) {
+                user.chats[selectedChat].name = response.name
                 document.getElementById(response.id).children[0].innerText = response.name
             }
             break;
@@ -318,9 +317,9 @@ function SendMessageHandle() {
         id: Number(messageInp.getAttribute("messageToEditID")) || crypto.getRandomValues(new Int16Array(10))[0], 
         contentType: fileSC.hasAttribute("file") ? "file" : "text", 
         content: fileSC.hasAttribute("file") ? {...JSON.parse(fileSC.getAttribute("file")), description: messageInp.value } : messageInp.value, 
-        chatID: selectedChat._id, 
+        chatID: user.chats[selectedChat]._id, 
     }
-    socket.emit('message', { ...rawMessage, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send", chatType: selectedChat.owner ? "group" : "dm" })
+    socket.emit('message', { ...rawMessage, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send", chatType: user.chats[selectedChat].owner ? "group" : "dm" })
     !messageInp.hasAttribute("messageToEditID") && RenderMessages(false, false, true, { ...rawMessage, from: { uid: user.uid }, date: new Date() })
     messageInp.value = ""
     messageInp.removeAttribute("messageToEditID")
@@ -334,7 +333,7 @@ function OpenModal(e) {
         document.getElementById(`${e.target.id || e.path[1].id}-modal`).classList.add("hidden")
         bg.classList.add("hidden")
     }
-    document.getElementById(`${e.target.id || e.path[1].id}-modal`).classList.remove("hidden")
+    document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).classList.remove("hidden")
 }
 
 function ToggleFile(file) {
@@ -349,7 +348,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
     RenderElements(messageView.id, message => `${message.from.uid != user.uid ? `<p class="message-header">${message.from.name}-${message.from.uid}</p>` : '' }<div class="message-content">${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.url.includes("image") ? `<img src="${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}</div>${message.content?.description?.length > 200 || message.content?.length > 200 ? `<span class="extend-message">See more ${message.content?.description?.length - 200 || message.content?.length - 200}</span>` : ''}<p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, clear, prepend, 
         (message, e) => {
             if (e.target.classList.contains("extend-message")) {
-                const message = selectedChat.messages.find(_message => _message.id == e.path[1].id)
+                const message = user.chats[selectedChat].messages.find(_message => _message.id == e.path[1].id)
                 if (message.contentType == "text")
                     e.target.previousSibling.innerHTML = parseMessageContent(message.content, false)
                 else
@@ -363,7 +362,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
             menu.children[2].style.display = message.content.url?.includes("image") ? "block" : "none"
             menu.onclick = _e => {
                 if (_e.target.id == "delete")
-                    return socket.emit("message", { chatID: selectedChat._id, id: message.id, action: 'delete' })
+                    return socket.emit("message", { chatID: user.chats[selectedChat]._id, id: message.id, action: 'delete' })
                     
                 if (_e.target.id == "edit") {
                     messageInp.setAttribute("messageToEditID", message.id)
@@ -387,27 +386,27 @@ function RenderChats(clear, prepend, ...chats) {
     RenderElements("data-view", chat => `<img src="./api/upload/${chat.image}" alt="group image"/><span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.uid != user.uid).name}</span><span></span><span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
     clear, prepend, 
     async (chat, e) => {
-        if (!selectedChat || (selectedChat._id != chat._id)) {
-            const chatResponse = !chat.messages?.length && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)).json()).chat
-            if (selectedChat) 
-                document.getElementById(selectedChat._id).style.backgroundColor = "var(--third-color-theme)"
-            selectedChat = { ...chat, ...chatResponse }
-            const usersParsed = selectedChat.users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
+        if (selectedChat == null || (user.chats[selectedChat]._id != chat._id)) {
+            if (selectedChat != null) 
+                document.getElementById(user.chats[selectedChat]._id).style.backgroundColor = "var(--third-color-theme)"
+            selectedChat = user.chats.findIndex(_chat => _chat._id == chat._id)
+            e.target.style.backgroundColor = "var(--third-lighten-color-theme)"
+            const chatResponse = (user.chats[selectedChat].remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)).json()).chat
+            user.chats[selectedChat] = { ...chat, ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
+            const usersParsed = user.chats[selectedChat].users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
             chatInfo.children[0].src = `./api/upload/${chat.image}`
-            chatInfo.children[1].children[0].innerText = selectedChat.owner ? selectedChat.name : document.getElementById(selectedChat.uid).children[0].innerText
+            chatInfo.children[1].children[0].innerText = user.chats[selectedChat].owner ? user.chats[selectedChat].name : document.getElementById(user.chats[selectedChat].uid).children[0].innerText
             chatInfo.children[1].children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
             messageView.style.display = "flex"
-            document.getElementById(selectedChat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
             document.getElementById("messageInput").style.display = "flex"
             chatInfo.classList.remove("hidden")
             document.getElementById("messages-placeholder").classList.add("hidden")
             messageView.classList.remove("hidden")
-            for (let i = selectedChat.messages.length - selectedChat.newMessages; i < selectedChat.messages.length; i++)
-                socket.emit("message", { chatID: selectedChat._id, id: selectedChat.messages[i].id, action: "view" });
-            selectedChat.newMessages = 0
-            user.chats[user.chats.findIndex(chat => chat._id == selectedChat._id)] = selectedChat
-            ToggleNotification(selectedChat)
-            RenderMessages(true, false, true, ...selectedChat.messages)
+            for (let i = user.chats[selectedChat].messages.length - user.chats[selectedChat].newMessages; i < user.chats[selectedChat].messages.length; i++)
+                socket.emit("message", { chatID: user.chats[selectedChat]._id, id: user.chats[selectedChat].messages[i].id, action: "view" });
+            user.chats[selectedChat].newMessages = 0
+            ToggleNotification(user.chats[selectedChat])
+            RenderMessages(true, false, true, ...user.chats[selectedChat].messages)
         }
         if (e.target.tagName == "svg" || e.target.tagName == "path") {
             const menu = document.getElementById("groupConfigs-view")
