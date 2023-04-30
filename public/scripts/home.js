@@ -391,7 +391,7 @@ function RenderChats(clear, prepend, ...chats) {
                 document.getElementById(user.chats[selectedChat]._id).style.backgroundColor = "var(--third-color-theme)"
             selectedChat = user.chats.findIndex(_chat => _chat._id == chat._id)
             e.target.style.backgroundColor = "var(--third-lighten-color-theme)"
-            const chatResponse = (user.chats[selectedChat].remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)).json()).chat
+            const chatResponse = (user.chats[selectedChat]?.remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)).json()).chat
             user.chats[selectedChat] = { ...chat, ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
             const usersParsed = user.chats[selectedChat].users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
             chatInfo.children[0].src = `./api/upload/${chat.image}`
