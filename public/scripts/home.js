@@ -148,10 +148,12 @@ messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && user.chats[selectedChat] && user.chats[selectedChat].remainingMessages) {
         const data = (await (await fetch(`/api/chat/${user.chats[selectedChat]._id}/messages/?amount=10&limit=${user.chats[selectedChat].messages.length}&userUID=${user.uid}&userAuthToken=${authToken}`)).json())
         user.chats[selectedChat].remainingMessages = data.remaining
-        data.messages.forEach(message => message.from.id != user.uid && !message.views.some(view => view == user.uid) && socket.emit("message", { groupID: user.chats[selectedChat]._id, id: message.id, action: "view" }))
         messageView.scrollBy(0, document.getElementById(user.chats[selectedChat].messages[0].id).offsetTop)
         user.chats[selectedChat].messages.unshift(...data.messages)
-        RenderMessages(false, true, false, ...data.messages)
+        for (let i = 0; i < data.messages.length; i++) {
+            RenderMessages(false, true, false, data.messages[data.messages.length - i - 1])
+            data.messages[i].from.id != user.uid && !data.messages[i].views.some(view => view == user.uid) && socket.emit("message", { groupID: user.chats[selectedChat]._id, id: data.messages[i].id, action: "view" })
+        }
     }
 })
 
@@ -312,11 +314,11 @@ function ToggleNotification(chat) {
 }
 
 function SendMessageHandle() {
-    if (!fileSC.hasAttribute("file") && (messageInp.value == '' || messageInp.value == ' ' || messageInp.value == undefined || messageInp.value == null)) return
+    if (!fileSC.hasAttribute("file") && (!messageInp.value || messageInp.value.match(/\&[^\s\&\;]+\;|^\s+$/g))) return
     const rawMessage = { 
         id: Number(messageInp.getAttribute("messageToEditID")) || crypto.getRandomValues(new Int16Array(10))[0], 
         contentType: fileSC.hasAttribute("file") ? "file" : "text", 
-        content: fileSC.hasAttribute("file") ? {...JSON.parse(fileSC.getAttribute("file")), description: messageInp.value } : messageInp.value, 
+        content: fileSC.hasAttribute("file") ? {...JSON.parse(fileSC.getAttribute("file")), description: messageInp.value.trim() } : messageInp.value.trim(), 
         chatID: user.chats[selectedChat]._id, 
     }
     socket.emit('message', { ...rawMessage, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send", chatType: user.chats[selectedChat].owner ? "group" : "dm" })
@@ -391,9 +393,9 @@ function RenderChats(clear, prepend, ...chats) {
             if (selectedChat != null) 
                 document.getElementById(user.chats[selectedChat]._id).style.backgroundColor = "var(--third-color-theme)"
             selectedChat = user.chats.findIndex(_chat => _chat._id == chat._id)
-            e.target.style.backgroundColor = "var(--third-lighten-color-theme)"
+            document.getElementById(chat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
             const chatResponse = (user.chats[selectedChat]?.remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)).json()).chat
-            user.chats[selectedChat] = { ...chat, ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
+            user.chats[selectedChat] = { ...user.chats[selectedChat], ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
             const usersParsed = user.chats[selectedChat].users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
             chatInfo.children[0].src = `./api/upload/${chat.image}`
             chatInfo.children[1].children[0].innerText = user.chats[selectedChat].owner ? user.chats[selectedChat].name : document.getElementById(user.chats[selectedChat].uid).children[0].innerText
