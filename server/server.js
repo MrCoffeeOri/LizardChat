@@ -71,7 +71,7 @@ io.on('connection', async socket => {
                 if (checkError(otherUser) || await Dm.exists({ users: [user.uid, otherUser.uid] })) return 
                 const otherUserSocket = (await io.sockets.in(data.userUID).fetchSockets())[0]
                 const dm = new Dm({ users: [user.uid, otherUser.uid] })
-                dmObj = dm.toObject()
+                dmObj = { ...dm.toObject(), name: otherUser.name, image: otherUser.image }
                 otherUserSocket && otherUserSocket.join(dm._id.toString())
                 await socket.join(dm._id.toString())
                 await dm.save()

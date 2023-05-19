@@ -374,7 +374,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
             menu.children[2].style.display = message.content.url?.includes("image") ? "block" : "none"
             menu.onclick = _e => {
                 if (_e.target.id == "delete")
-                    return socket.emit("message", { chatID: user.chats[selectedChat]._id, id: message.id, action: 'delete' })
+                    return socket.emit("message", { chatID: user.chats[selectedChat]._id, id: message.id, chatType: user.chats[selectedChat].owner ? "group" : "dm", action: 'delete' })
                     
                 if (_e.target.id == "edit") {
                     messageInp.setAttribute("messageToEditID", message.id)
