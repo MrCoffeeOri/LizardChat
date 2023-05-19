@@ -41,6 +41,8 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     color: var(--second-color-theme);
 }
 
+h1, p { margin: 0; }
+
 ::-webkit-scrollbar {
     width: 3px;
     background-color: var(--third-color-theme);
@@ -96,26 +98,26 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     background-color: var(--third-lighten-color-theme);
 }
 
-.group > span:nth-child(3), .group > span:nth-child(4) {
+.chat > span:nth-child(3), .chat > span:nth-child(4) {
     transition: 400ms ease-in-out;
     color: white;
     font-size: smaller;
 }
 
-.group span:nth-child(3) {
+.chat span:nth-child(3) {
     display: none;
     border-radius: 50%;
     background-color: rgb(139, 36, 36);
     padding: 1px 6px;
 }
 
-.group img, #chat-info img {
+.chat img, #chat-info img {
     width: 3.5vw;
     height: 7vh;
     border-radius: 50%;
 }
 
-.group:hover svg { display: block; }
+.chat:hover svg { display: block; }
 
 .message {
     box-shadow: 4px 3px 6px black;
@@ -376,10 +378,7 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     width: 30vw;
 }
 
-#intro-modal h1 {
-    font-size: 2.2rem;
-    margin: 0;
-}
+#intro-modal h1 { font-size: 2.2rem; }
 
 #intro-modal span {
     color: var(--second-color-theme);
@@ -432,10 +431,7 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     left: 37.5%;
 }
 
-#newGroup-modal h1 { 
-    margin: 0;
-    font-size: 1.5em;
-}
+#newGroup-modal h1 { font-size: 1.5em; }
 
 #newGroup-modal div { margin: 7px; }
 
@@ -498,7 +494,11 @@ aside svg:hover, div.file svg:hover, #messageInput svg:hover {
     color: white;
 }
 
-#chat-info > h1, p { margin: 0; }
+#chat-info p {
+    min-width: 15vw;
+    cursor: pointer;
+    color: #ffffff7e;
+}
 
 #invites-notification {
     background-color: red;

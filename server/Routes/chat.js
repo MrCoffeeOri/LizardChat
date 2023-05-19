@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { Group } from "../models/group.model.js"
 import { Dm } from "../models/dm.model.js"
+import { Types } from "mongoose";
 
 export default Router()
     .get("/find/:id", async (req, res) => {
-        const chat = await Group.findOne({ _id: req.params.id, isPrivate: false })
+        const chat = await Group.findOne({ _id: req.params.id, isPrivate: false }, { messages: 0, users: 0 })
         if (!chat)
             return res.status(404).json({ message: "Chat not found" })
-        res.status(200).json({ message: "Success", group: { ...chat, messages: undefined } })
+        res.status(200).json({ message: "Success", group: chat })
     })
     .get("/:id", ChatValidation, (req, res) => res.status(200).json({ 
         message: "Success", 
@@ -35,7 +36,20 @@ async function MessageValidation(req, res, next) {
 }
 
 async function ChatValidation(req, res, next) {
-    const filter = { _id: req.params.id, "users.uid": req.query.userUID }
-    req.chat = (await Group.findOne(filter) || await Dm.findOne(filter))?.toObject()
+    const pipeline = [
+        { $match: { _id: Types.ObjectId(req.params.id), ...(req.query.isDM ? { "users": req.query.userUID } : { "users.uid": req.query.userUID }) } },
+        {
+            $lookup: {
+                from: "users",
+                localField: req.query.isDM ? "users" : "users.uid",
+                foreignField: "uid",
+                let: { users: "$users" },
+                as: "users",
+                pipeline: [ { $unset: ["email", "password", "authToken", "isPrivate", "otherInstance"] } ]  
+            }
+        }
+    ]
+    !req.query.isDM && pipeline[1].$lookup.pipeline.push({ $replaceRoot: { newRoot: { $mergeObjects: [{ $arrayElemAt: [ "$$users", { $indexOfArray: [ "$$users", "$$ROOT.uid" ] } ] }, "$$ROOT" ] } } })
+    req.chat = (req.query.isDM ? await Dm.aggregate(pipeline) : await Group.aggregate(pipeline))[0]
     return !req.chat ? res.status(404).json({ message: "Chat not found" }) : next()
 }

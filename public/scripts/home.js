@@ -37,6 +37,14 @@ document.querySelectorAll("#messageInput > svg")[1].addEventListener('click', Se
 messageInp.addEventListener("keydown", e => e.key == "Enter" && SendMessageHandle())
 fileSelec.addEventListener('click', () => !fileSC.hasAttribute("file") && fileInp.click())
 fileSC.children[3].addEventListener("click", () => fileInp.click())
+chatInfo.children[1].children[1].addEventListener("mouseleave", e => e.target.innerText = "See more information")
+
+chatInfo.children[1].children[1].addEventListener("mouseenter", e => {
+    if (user.chats[selectedChat].owner) {
+        const usersParsed = user.chats[selectedChat].users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
+        e.target.innerText = usersParsed ? usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '') : ""
+    }
+})
 
 fileSC.children[0].addEventListener("click", () => {
     ToggleFile()
@@ -170,6 +178,7 @@ socket.on("connect", () => {
     socket.on("user", response => {
         const info = document.getElementById("info")
         user = response
+        console.log(user)
         user.chats.sort((a, b) => {
             if (!a.messages[a.messages.length - 1]) return 0
             if (!b.messages[b.messages.length - 1]) return -1
@@ -204,7 +213,7 @@ socket.on("connect", () => {
         }
     })
 
-    socket.on("userInGroup", async response => {
+    socket.on("userInChat", async response => {
         const resUser = await (await fetch(`/api/user/find/${response.userUID}`)).json()
         if (!resUser.user)
             return ShowErrorCard(resUser.error)
@@ -386,7 +395,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
 }
 
 function RenderChats(clear, prepend, ...chats) { 
-    RenderElements("data-view", chat => `<img src="./api/upload/${chat.image}" alt="group image"/><span style="display: inline">${chat.owner ? chat.name : chat.users.find(_user => _user.uid != user.uid).name}</span><span></span><span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
+    RenderElements("data-view", chat => `<img src="${chat.image == "default" ? "./assets/default.webp" : "./api/upload/" + chat.image}" alt="group image"/><span style="display: inline">${chat.name}</span><span></span><span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span><svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
     clear, prepend, 
     async (chat, e) => {
         if (selectedChat == null || (user.chats[selectedChat]._id != chat._id)) {
@@ -394,19 +403,17 @@ function RenderChats(clear, prepend, ...chats) {
                 document.getElementById(user.chats[selectedChat]._id).style.backgroundColor = "var(--third-color-theme)"
             selectedChat = user.chats.findIndex(_chat => _chat._id == chat._id)
             document.getElementById(chat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
-            const chatResponse = (user.chats[selectedChat]?.remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}`)).json()).chat
+            const chatResponse = (user.chats[selectedChat]?.remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}${!chat.owner && "&isDM=true" }`)).json()).chat
             user.chats[selectedChat] = { ...user.chats[selectedChat], ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
-            const usersParsed = user.chats[selectedChat].users.map(_user => _user.uid == user.uid ? "You" : _user.name).join(', ')
-            chatInfo.children[0].src = `./api/upload/${chat.image}`
-            chatInfo.children[1].children[0].innerText = user.chats[selectedChat].owner ? user.chats[selectedChat].name : document.getElementById(user.chats[selectedChat].uid).children[0].innerText
-            chatInfo.children[1].children[1].innerText = usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '')
+            chatInfo.children[0].src = chat.image == "default" ? "./assets/default.webp" : `./api/upload/${chat.image}`
+            chatInfo.children[1].children[0].innerText = user.chats[selectedChat].name
             messageView.style.display = "flex"
             document.getElementById("messageInput").style.display = "flex"
             chatInfo.classList.remove("hidden")
             document.getElementById("messages-placeholder").classList.add("hidden")
             messageView.classList.remove("hidden")
             for (let i = user.chats[selectedChat].messages.length - user.chats[selectedChat].newMessages; i < user.chats[selectedChat].messages.length; i++)
-                socket.emit("message", { chatID: user.chats[selectedChat]._id, id: user.chats[selectedChat].messages[i].id, action: "view" });
+                socket.emit("message", { chatID: user.chats[selectedChat]._id, chatType: chat.owner ? "group" : "dm", id: user.chats[selectedChat].messages[i].id, action: "view" });
             user.chats[selectedChat].newMessages = 0
             ToggleNotification(user.chats[selectedChat])
             RenderMessages(true, false, true, ...user.chats[selectedChat].messages)
@@ -419,12 +426,12 @@ function RenderChats(clear, prepend, ...chats) {
             menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
             menu.style.left = e.pageX + "px"
             menu.onclick = e => {
-                if (e.target.id == "delete") selectedChat = null
-                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "DM", { id: chat._id, action: e.target.id })
+                if (e.target.id == "delete" || e.target.id == "leave") selectedChat = null
+                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "dm", { id: chat._id, action: e.target.id })
                 OpenModal({ target: { id: "groupEdit" } })
             }
         }
-    }, () => ["group", "flex-set", "data-element"], ...chats)
+    }, () => ["chat", "flex-set", "data-element"], ...chats)
 }
 
 function RenderInvites(clear, ...invites) {
