@@ -21,7 +21,7 @@ aside {
     border-right: 2px solid rgba(255, 255, 255, 0.09);
 }
 
-input, textarea {
+aside input, main input {
     color: white;
     background-color: var(--third-color-theme);
     border: 2px solid var(--main-color-theme);
@@ -111,7 +111,7 @@ h1, p { margin: 0; }
     padding: 1px 6px;
 }
 
-.chat img, #chat-info img {
+.chat img, #chat-info img, #newGroup-modal img {
     width: 3.5vw;
     height: 7vh;
     border-radius: 50%;
@@ -281,7 +281,7 @@ h1, p { margin: 0; }
     padding: 13px 10px;
     text-align: center;
     border: none;
-    width: 22.1vw;
+    width: 26.5vw;
     height: 2.6vh;
 }
 
@@ -427,7 +427,7 @@ h1, p { margin: 0; }
 #newGroup-modal {
     padding: 8px 0;
     width: 25%;
-    top: 34%;
+    top: 18%;
     left: 37.5%;
 }
 
@@ -435,13 +435,20 @@ h1, p { margin: 0; }
 
 #newGroup-modal div { margin: 7px; }
 
-#newGroup-modal textarea {
+#newGroup-modal textarea, #newGroup-modal input {
     resize: none;
     width: 100%;
-    height: 8vh;
+    height: 3.6vh;
 }
 
-#newGroup-modal input:focus, textarea:focus { transform: scale(1.1); }
+#newGroup-modal textarea:focus { height: 9vh; }
+
+#newGroup-modal img {
+    cursor: pointer;
+    margin-top: 5px;
+    width: 8vw;
+    height: 15vh;
+}
 
 #invites-modal {
     top: 32.5%;

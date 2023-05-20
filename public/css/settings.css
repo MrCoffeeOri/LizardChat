@@ -44,7 +44,8 @@ form button:hover {
 
 input, textarea { 
     outline: none; 
-    transition: 350ms;
+    border: none;
+    transition: 250ms;
 }
 
 a { text-decoration: none; }
@@ -53,3 +54,13 @@ ul {
     padding: 0;
     list-style: none;
 }
+
+.modal input, .modal textarea { 
+    color: white;
+    border-bottom: 2px solid white !important;
+    background-color: inherit;
+}
+
+.modal input:hover, .modal textarea:hover { border-bottom: 2px solid var(--third-color-theme) !important; }
+
+.modal input:focus, .modal textarea:focus, .modal input:not(:placeholder-shown), .modal textarea:not(:placeholder-shown) { border-bottom: 2px solid var(--second-color-theme) !important; }

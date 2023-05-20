@@ -29,16 +29,17 @@
             <h1>Create new group</h1>
             <form id="newGroupForm" class="flex-set">
                 <div>
-                    <label for="groupName">Name</label>
-                    <input required autocomplete="off" type="text" id="groupName">
+                    <label for="groupName">Name </label>
+                    <input placeholder=" " required autocomplete="off" type="text" id="groupName">
                 </div>
                 <div>
                     <label for="groupDescription">Description</label>
-                    <textarea required id="groupDescription"></textarea>
+                    <textarea placeholder=" " required id="groupDescription"></textarea>
                 </div>
                 <div>
-                    <label for="groupImage">Image</label>
-                    <input required type="file" id="groupImage">
+                    <label for="groupImage" style="text-align: center;">Image</label>
+                    <img src="assets/default.webp" id="groupImageDisplay" alt="group image" />
+                    <input required type="file" class="hidden" id="groupImage">
                 </div>
                 <button>Create</button>
             </form>
@@ -48,7 +49,7 @@
             <form id="sendInviteForm" class="flex-set">
                 <div>
                     <label for="userToInvite">User ID</label>
-                    <input required autocomplete="off" type="text" id="userToInvite">
+                    <input placeholder=" " required autocomplete="off" type="text" id="userToInvite">
                 </div>
                 <select required id="groupToInvite"></select>
                 <button>Send</button>

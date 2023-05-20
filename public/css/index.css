@@ -34,20 +34,11 @@ body {
 }
 
 #modal input {
-    border: none;
-    color: white;
-    border-bottom: 2px solid white;
-    background-color: var(--main-color-theme);
     font-weight: bolder;
     width: 15vw;
     height: 2.5vh;
     padding: 10px;
-    outline: none;
 }
-
-#modal input:hover { border-bottom: 2px solid var(--main-darken-color-theme); }
-
-#modal input:focus, #modal input:not(:placeholder-shown) { border-bottom: 2px solid var(--second-color-theme); }
 
 #modal a {
     color: white;

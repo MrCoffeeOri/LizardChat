@@ -5,11 +5,12 @@ const socket = io(window.location.host, { auth: { token: authToken, userID: new 
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const messageView = document.getElementById("messages-view")
 const messageInp = document.querySelector(`#messageInput > input[type="text"]`)
-const fileInp = document.querySelector(`#messageInput > input[type="file"]`)
+const fileInp = document.getElementById("groupImage")
 const searchInput = document.querySelector("#search > div > input")
 const fileSelec = document.querySelectorAll("#messageInput > svg")[0]
 const loadingIntro = document.getElementById("loading-intro")
 const chatInfo = document.getElementById("chat-info")
+const groupImageDisplay = document.getElementById("groupImageDisplay")
 const inviteNotification = document.getElementById("invites-notification")
 const fileSC = document.getElementById("file-showcase")
 const fileChunkSize = 1000
@@ -37,6 +38,7 @@ document.querySelectorAll("#messageInput > svg")[1].addEventListener('click', Se
 messageInp.addEventListener("keydown", e => e.key == "Enter" && SendMessageHandle())
 fileSelec.addEventListener('click', () => !fileSC.hasAttribute("file") && fileInp.click())
 fileSC.children[3].addEventListener("click", () => fileInp.click())
+groupImageDisplay.addEventListener("click", () => fileInp.click())
 chatInfo.children[1].children[1].addEventListener("mouseleave", e => e.target.innerText = "See more information")
 
 chatInfo.children[1].children[1].addEventListener("mouseenter", e => {
@@ -59,7 +61,7 @@ window.addEventListener("click", e => {
 
 fileInp.addEventListener("input", e => {
     const reader = new FileReader()
-    reader.onloadend = _e => { ToggleFile({ name: e.target.files[0].name, url: _e.target.result, size: e.target.files[0].size }) }
+    reader.onloadend = _e => !document.getElementById("newGroup-modal").classList.contains("hidden") ? ToggleGroupImageDisplay(_e.target.result) : ToggleFile({ name: e.target.files[0].name, url: _e.target.result, size: e.target.files[0].size }) 
     reader.readAsDataURL(e.target.files[0])
 })
 
@@ -75,7 +77,7 @@ document.querySelectorAll("#options-view li").forEach(li => li.addEventListener(
             }
         })
         selection.disabled = selection.children.length == 0
-        selection.innerHTML = selection.children.length == 0 ? "<option value=''>User has no groups to invite</option>" : selection.innerHTML
+        selection.innerHTML = selection.children.length == 0 ? "<option value=''>No groups to invite</option>" : selection.innerHTML
     }
     OpenModal(e)
 }))
@@ -146,6 +148,7 @@ document.getElementById("newGroupForm").addEventListener('submit', e => {
         e.target[0].value = ""
         e.target[1].value = ""
         e.target[2].files = null
+        ToggleGroupImageDisplay()
     }
     fileReader.readAsDataURL(e.target[2].files[0])
     e.target.offsetParent.classList.add("hidden")
@@ -167,6 +170,7 @@ messageView.addEventListener('scroll', async e => {
 
 document.getElementById("sendInviteForm").addEventListener('submit', e => {
     e.preventDefault()
+    if (e.target[1].disabled) return
     e.target.parentElement.classList.add("hidden")
     document.getElementById("background").classList.add("hidden")
     socket.emit('invite', { to: e.target[0].value, chatID: e.target[1].value, action: "create" })
@@ -320,6 +324,11 @@ function ToggleNotification(chat) {
     const chatElement = document.getElementById(chat._id)
     chatElement.children[2].style.display = chat.newMessages ? "block" : "none"
     chatElement.children[2].innerText = chat.newMessages
+}
+
+function ToggleGroupImageDisplay(imageSrc) {
+    groupImageDisplay.src = imageSrc || "./assets/default.webp"
+    groupImageDisplay.style.border = imageSrc ? "2px solid var(--second-color-theme)" : ''
 }
 
 function SendMessageHandle() {
