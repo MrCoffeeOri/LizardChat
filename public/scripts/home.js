@@ -281,39 +281,36 @@ socket.on("connect", () => {
         window.location.href = "/disconnected.html"
     })
 
-    socket.on("dm", HandleChatEvent)
-    socket.on("group", HandleChatEvent)
+    socket.on("chat", response => {
+        switch (response.action) {
+            case "create":
+            case "join":
+                user.chats.push(response.chat) 
+                RenderChats(false, false, response.chat)
+                break;
+    
+            case "leave":
+            case "delete":
+                user.chats.splice(selectedChat, 1)
+                document.getElementById(response.id).remove()
+                messageView.innerHTML = ''
+                messageView.style.display = "none"
+                document.getElementById("messageInput").style.display = "none"
+                chatInfo.classList.add("hidden")
+                document.getElementById("messages-placeholder").classList.remove("hidden")
+                break;
+    
+            case "rename":
+                // TODO: Change the UID param and fix this shit
+                user.chats.find(group => group.id == response.id).name = response.name
+                if (user.chats[selectedChat].uid == response.id) {
+                    user.chats[selectedChat].name = response.name
+                    document.getElementById(response.id).children[0].innerText = response.name
+                }
+                break;
+        }
+    })
 })
-
-function HandleChatEvent(response) {
-    switch (response.action) {
-        case "create":
-        case "join":
-            user.chats.push(response.group || response.dm) 
-            RenderChats(false, false, response.group || response.dm)
-            break;
-
-        case "leave":
-        case "delete":
-            user.chats.splice(selectedChat, 1)
-            document.getElementById(response.id).remove()
-            messageView.innerHTML = ''
-            messageView.style.display = "none"
-            document.getElementById("messageInput").style.display = "none"
-            chatInfo.classList.add("hidden")
-            document.getElementById("messages-placeholder").classList.remove("hidden")
-            break;
-
-        case "rename":
-            // TODO: Change the UID param and fix this shit
-            user.chats.find(group => group.id == response.id).name = response.name
-            if (user.chats[selectedChat].uid == response.id) {
-                user.chats[selectedChat].name = response.name
-                document.getElementById(response.id).children[0].innerText = response.name
-            }
-            break;
-    }
-}
 
 function ShowErrorCard(message) {
     RenderElements("main-view", message => `<span>X</span><p>${message.content}</p><div></div>`, false, false, (_, e) => e.target.tagName == "SPAN" && e.path[1].remove(), null, { id: "error-card", content: message })

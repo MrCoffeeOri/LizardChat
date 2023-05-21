@@ -87,7 +87,7 @@ io.on('connection', async socket => {
                 if (checkError(await Dm.findOneAndUpdate({ _id: data.id, users: [user.uid], block: null }, { block }))) return
                 break;
         }
-        io.to(data.id || dmObj._id.toString()).emit("dm", { id: data.id, action: data.action, dm: dmObj, block })
+        io.to(data.id || dmObj._id.toString()).emit("chat", { id: data.id, action: data.action, chat: dmObj, block })
         data.action == "leave" && io.socketsLeave(data.id) 
     })
 
@@ -99,26 +99,26 @@ io.on('connection', async socket => {
                 user.chats.push(newObjGroup)
                 await newGroup.save()
                 await socket.join(newGroup._id.toString())
-                return socket.emit('group', { group: newObjGroup, action: data.action })
+                return socket.emit("chat", { chat: newObjGroup, action: data.action })
 
             case "delete":
                 const deletGroup = await Group.findOneAndDelete({ _id: data.id, owner: user.uid })
                 if (checkError(deletGroup)) return
                 user.chats = user.chats.filter(chat => chat._id == data.id && chat.owner == user.uid)
-                io.to(data.id).emit('group', { id: data.id, action: data.action })
+                io.to(data.id).emit("chat", { id: data.id, action: data.action })
                 rm(uploadPath + deletGroup.image)
                 return io.socketsLeave(data.id)
             
             case "rename":
                 if (checkError(await Group.findOneAndUpdate({ _id: data.id, owner: user.uid }, { name: data.name }))) return
-                return io.to(data.id).emit('group', { id: data.id, name: data.name, action: data.action })
+                return io.to(data.id).emit("chat", { id: data.id, name: data.name, action: data.action })
 
             case "join":
                 const groupToJoin = await Group.findOneAndUpdate({ _id: data.id, inviteToken: data.token, $not: { users: user.uid } }, { users: { $push: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } })
                 if (checkError(groupToJoin)) return
                 const objGroup = groupToJoin.toObject()
                 user.groups.push(objGroup)
-                socket.emit('group', { group: objGroup, action: data.action })
+                socket.emit("chat", { chat: objGroup, action: data.action })
                 io.to(data.id).emit('userInChat', { userUID: user.uid, id: data.id })
                 return await socket.join(data.id)
 
