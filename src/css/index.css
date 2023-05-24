@@ -1,0 +1,70 @@
+@import url(setup.css);
+
+@keyframes Float {
+    to {
+        transform: translateY(-3%);
+    
+    }
+}
+
+nav a:hover {
+    background-color: var(--nav-color-darken);
+    transition: 400ms;
+    transform: scale(1.05);
+}
+
+main section {
+    width: 70vw;
+    margin: auto;
+    margin-bottom: 3%;
+}
+
+main > section:first-child {
+    margin-top: 4%;
+    margin-bottom: 10%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+main > section:first-child img {
+    animation: Float 2s alternate-reverse infinite ease-in-out;
+}
+
+main > section:first-child a {
+    text-align: center;
+    display: block;
+    color: white;
+    width: 50%;
+    padding: 7px;
+    background-color: rgb(78, 184, 74);
+    border-radius: 3rem;
+    transition: 400ms ease-in-out;
+}
+
+
+main > section:first-child a:hover {
+    background-color: rgb(64, 156, 61);
+}
+
+.info {
+    background-color: #eee6d5c7;
+    color: #22170ea2;
+    padding: 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    border: 1px solid #8b592b80;
+}
+
+h1, h2 {
+    color: #8b5a2b;
+}
+
+h1 {
+    font-size: 2.5pc;
+}
+
+footer p {
+    line-height: 1.5;
+    margin-bottom: 5px;
+}

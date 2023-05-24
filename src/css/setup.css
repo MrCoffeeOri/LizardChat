@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Copse&family=Nunito:wght@400&display=swap');
+
+:root {
+    --background-color: #F2EFE9;
+    --nav-color: #3a2a1c;
+    --nav-color-darken: #22170e;
+	--link-color: #fff;
+	--form-background-color: #fff;
+    --form-element-color: #6B4E37;
+    --form-element-color-darken: #493525;
+}
+
+* {
+	box-sizing: border-box;
+	font-family: 'Nunito', sans-serif;
+}
+
+nav {
+	font-family: 'Cantata One', serif;
+	background-color: var(--nav-color);
+	color: whitesmoke;
+	font-weight: 100;
+	text-align: center;
+	padding:0px;
+	box-sizing: border-box;
+	height: 10vh;
+	display: flex;
+	margin: 0px;
+	flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+nav a {
+    margin: 0 10px;
+    display: block;
+    padding: 10px;
+    color: var(--link-color);
+    text-decoration: none;
+    font-weight: bold;
+    transition: 0.5s;
+    border-radius: .4rem;
+}
+
+nav img:nth-child(2) {
+	width: 3.5%;
+}
+
+#iconLeft {
+	width: 35px;
+	height: 35px;
+	padding: 10px;
+	filter: invert(100%);
+}
+
+h1 {
+    font-family: 'Copse', serif;
+}
+
+body {
+	background-color: var(--background-color);
+    margin: 0;
+	font-family: Arial, sans-serif;
+    background-image: url(../img/background-image-main.png);
+    height: 100%;
+    width: 100%;
+}
+
+footer {
+    background-color: var(--nav-color);
+    color: var(--link-color);
+    text-align: center;
+    font-size: 14px;
+    padding: 0.1% 0px;
+	width: 100%;
+}
+
+form {
+	background-color: var(--form-background-color);
+	padding: 20px;
+	width: 50%;
+	margin: 50px auto;
+	border-radius: 5px;
+	box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+}
+
+form label {
+	display: block;
+	margin-bottom: 10px;
+	color: var(--form-element-color);
+	font-weight: bold;
+}
+
+form input {
+    outline: none;
+    padding: 5px;
+	margin-bottom: 10px;
+	width: 100%;
+	border: 1px solid #C7B299;
+	border-radius: 3px;
+}
+
+form input:focus::placeholder {
+    transition: 300ms;
+    transform: translateY(-100px);
+} 
+
+form input[type="submit"] {
+    background-color: var(--form-element-color);
+	color: #FFFFFF;
+	padding: 10px 20px;
+	border: none;
+	border-radius: 3px;
+	cursor: pointer;
+    border: 1px solid #6B4238;
+    transition: 400ms ease;
+}
+
+form input[type="submit"]:hover {
+    background-color: var(--form-element-color-darken);
+}
+
+#pFooter {
+	padding: 5px;
+	text-align: center;
+}
+
+a {
+	text-decoration: none;
+}

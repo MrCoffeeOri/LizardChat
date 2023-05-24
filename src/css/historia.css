@@ -1,0 +1,41 @@
+@import url(setup.css);
+
+
+img a {
+	position: relative;
+	top: 30%;	
+	cursor: pointer;
+}
+
+nav h4{
+	padding: 10px;
+	position: relative;
+}
+
+nav a{
+	position: absolute;
+	left: 2.5%;
+	width: fit-content;
+	height: fit-content;
+	padding: 5px;
+	margin: 0%;
+}
+
+nav a:hover {
+	background-color: var(--nav-color-darken);
+}
+
+#foto-Museu {
+	margin: 10px auto;
+	display: block;
+	width: 50%;
+	height: 50%;
+	border: 2px solid #5e4b36;
+}
+
+p {
+	text-align: justify;
+	padding: 0px 25px;
+	text-indent: 30px;
+	line-height: 1.5;
+}
