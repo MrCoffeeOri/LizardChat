@@ -19,7 +19,7 @@ import { Invite } from './models/invite.model.js'
 const app = express()
 const server = createServer(app)
 const io = new Server(server)
-const uploadPath = `${process.cwd()}/server/uploads/`
+const uploadPath = `${process.cwd()}/src/server/uploads/`
 
 !existsSync(uploadPath) && await mkdir(uploadPath)
 config()
