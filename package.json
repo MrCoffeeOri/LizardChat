@@ -6,10 +6,10 @@
 		"Renan (MrCoffeeOri)",
 		"Monique (Moniq-e)"
 	],
-	"main": "./server/server.js",
+	"main": "./src/server/server.js",
 	"scripts": {
-		"test": "nodemon ./server/server.js",
-		"start": "node ./server/server.js"
+		"test": "nodemon ./src/server/server.js",
+		"start": "node ./src/server/server.js"
 	},
 	"license": "MIT",
 	"homepage": "https://github.com/moniq-e/NodeChat#readme",
