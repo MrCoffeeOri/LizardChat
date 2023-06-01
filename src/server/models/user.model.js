@@ -22,13 +22,9 @@ const $chatLookup = (collection, uid = null) => {
                 },
             } 
         },
-        { $unset: ["description", "inviteToken", "isPrivate", "users", "subusers"] }
+        { $unset: ["description", "inviteToken", "isPrivate"] }
     ]
-    if (collection == "dms") { 
-        pipeline.unshift({ $lookup: { from: "users", localField: "users", foreignField: "uid", as: "subusers", pipeline: [{ $match: { uid: { $ne: uid } } } ] } })
-        pipeline[1].$addFields["image"] = { $getField: { field: "image", input: { $arrayElemAt: ["$subusers", 0] } } }
-        pipeline[1].$addFields["name"] = { $getField: { field: "name", input: { $arrayElemAt: ["$subusers", 0] } } }
-    }
+    collection == "dms" ? pipeline.unshift({ $lookup: { from: "users", localField: "users", foreignField: "uid", as: "users", pipeline: [{ $project: { name: 1, uid: 1, image: 1 } }] } }) : pipeline[1].$unset.push("users")
     return {
         from: collection, 
         localField: "uid",
