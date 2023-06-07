@@ -29,7 +29,11 @@ app.use("/api/chat", chatRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
 app.use("/api/upload", uploadRouter)
+<<<<<<< HEAD
 app.use(express.static('./src/public'))
+=======
+app.use(express.static('src/public'))
+>>>>>>> 8844d19ff5b3474865d82b0dfd65f1282704d92a
 io.on('connection', async socket => {
     const checkError = document => (document?.errors?.message || !document) && socket.emit('error', { error: document?.errors?.message || "Invalid request"})
     const user = await User.FindByUID(socket.handshake.auth.userID)
