@@ -61,6 +61,10 @@ ul {
     background-color: inherit;
 }
 
+dialog { border: 1.5px solid white; }
+
+.modal::backdrop { background-color: rgba(0, 0, 0, 0.487); }
+
 .modal input:hover, .modal textarea:hover { border-bottom: 2px solid var(--third-color-theme) !important; }
 
 .modal input:focus, .modal textarea:focus, .modal input:not(:placeholder-shown), .modal textarea:not(:placeholder-shown) { border-bottom: 2px solid var(--second-color-theme) !important; }

@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose"
 
-const $chatLookup = (collection, uid = null) => {
+const $chatLookup = (collection) => {
     const pipeline = [
         { 
             $addFields: {
@@ -76,7 +76,7 @@ export const User = model("User", new Schema({
             return (await this.aggregate([
                 { $match: { uid: uid } },
                 { $lookup: $chatLookup("groups")}, 
-                { $lookup: $chatLookup("dms", uid) },
+                { $lookup: $chatLookup("dms") },
                 { $lookup: { from: "invites", localField: "uid", foreignField: "to", as: "invites" } },
                 { $addFields: { chats: { $concatArrays: ["$groups", "$dms"] } } },
                 { $unset: ["groups", "dms"] }

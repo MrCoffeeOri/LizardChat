@@ -29,7 +29,7 @@ app.use("/api/chat", chatRouter)
 app.use("/api/user", userRouter)
 app.use("/api/query", queryRouter)
 app.use("/api/upload", uploadRouter)
-app.use(express.static('public'))
+app.use(express.static('./src/public'))
 io.on('connection', async socket => {
     const checkError = document => (document?.errors?.message || !document) && socket.emit('error', { error: document?.errors?.message || "Invalid request"})
     const user = await User.FindByUID(socket.handshake.auth.userID)
@@ -67,11 +67,11 @@ io.on('connection', async socket => {
         let dmObj = undefined
         switch (data.action) {
             case "create":
-                const otherUser = await User.findOne({ uid: data.userUID })
+                const otherUser = await User.findOne({ uid: data.userUID }, { uid: 1, name: 1, image: 1 })
                 if (checkError(otherUser) || await Dm.exists({ users: [user.uid, otherUser.uid] })) return 
                 const otherUserSocket = (await io.sockets.in(data.userUID).fetchSockets())[0]
                 const dm = new Dm({ users: [user.uid, otherUser.uid] })
-                dmObj = dm.toObject()
+                dmObj = { ...dm.toObject(), users: [{ ...user, password: undefined, email: undefined, otherInstance: undefined, authToken: undefined }, otherUser.toObject()] }
                 otherUserSocket && otherUserSocket.join(dm._id.toString())
                 await socket.join(dm._id.toString())
                 await dm.save()

@@ -17,17 +17,16 @@
             <h1>LizardChat</h1>
             <h2>Connecting...</h2>
         </div>
-        <div id="background" class="hidden"></div>
-        <div id="intro-modal" class="hidden modal">
+        <dialog id="intro-modal" class="modal">
             <h1>Welcome to <span>LizardChat</span></h1>
             <h3>Thank you for join us!</h3>
-        </div>
-        <div id="invites-modal" class="hidden modal scrollable">
+        </dialog>
+        <dialog id="invites-modal" class="modal scrollable">
             <h2 style="margin: 10px;">Loading invites...</h2>
-        </div>
-        <div id="newGroup-modal" class="hidden modal">
+        </dialog>
+        <dialog id="newGroup-modal" class="modal">
             <h1>Create new group</h1>
-            <form id="newGroupForm" class="flex-set">
+            <form id="newGroupForm" method="dialog" class="flex-set">
                 <div>
                     <label for="groupName">Name </label>
                     <input placeholder=" " required autocomplete="off" type="text" id="groupName">
@@ -43,10 +42,10 @@
                 </div>
                 <button>Create</button>
             </form>
-        </div>
-        <div id="sendInvite-modal" class="hidden modal">
+        </dialog>
+        <dialog id="sendInvite-modal" class="modal">
             <h1>Send invite</h1>
-            <form id="sendInviteForm" class="flex-set">
+            <form id="sendInviteForm" method="dialog" class="flex-set">
                 <div>
                     <label for="userToInvite">User ID</label>
                     <input placeholder=" " required autocomplete="off" type="text" id="userToInvite">
@@ -54,14 +53,14 @@
                 <select required id="groupToInvite"></select>
                 <button>Send</button>
             </form>
-        </div>
-        <div id="configs-modal" class="hidden modal">
+        </dialog>
+        <dialog id="configs-modal" class="modal">
             <h2>Configurations</h2>
             <div>
                 <label for="requestMessageAmount">Request message amount:</label>
                 <input type="range" min="10" max="30" id="requestMessageAmount">
             </div>
-        </div>
+        </dialog>
         <!-- #endregion -->
         <aside>
             <div id="info" class="flex-set">

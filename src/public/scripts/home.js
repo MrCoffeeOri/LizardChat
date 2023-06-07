@@ -7,6 +7,7 @@ const messageView = document.getElementById("messages-view")
 const messageInp = document.querySelector(`#messageInput > input[type="text"]`)
 const fileInp = document.getElementById("groupImage")
 const searchInput = document.querySelector("#search > div > input")
+const searchInputBack = document.querySelector("#search > div > svg")
 const fileSelec = document.querySelectorAll("#messageInput > svg")[0]
 const loadingIntro = document.getElementById("loading-intro")
 const chatInfo = document.getElementById("chat-info")
@@ -35,6 +36,7 @@ if (new URLSearchParams(window.location.search).get('firstTime')) {
 }
 
 document.querySelectorAll("#messageInput > svg")[1].addEventListener('click', SendMessageHandle)
+document.querySelectorAll("dialog").forEach(dialog => dialog.addEventListener("click", e => e.target.tagName == "DIALOG" && e.target.close()))
 messageInp.addEventListener("keydown", e => e.key == "Enter" && SendMessageHandle())
 fileSelec.addEventListener('click', () => !fileSC.hasAttribute("file") && fileInp.click())
 fileSC.children[3].addEventListener("click", () => fileInp.click())
@@ -79,22 +81,22 @@ document.querySelectorAll("#options-view li").forEach(li => li.addEventListener(
         selection.disabled = selection.children.length == 0
         selection.innerHTML = selection.children.length == 0 ? "<option value=''>No groups to invite</option>" : selection.innerHTML
     }
-    OpenModal(e)
+    document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).showModal()
 }))
 
 document.getElementById("invites").addEventListener('click', e => {
     inviteNotification.classList.add("hidden")
     inviteNotification.innerText = null
-    OpenModal(e)
+    document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).showModal()
     RenderInvites(true, ...user.invites)
 })
 
 searchInput.addEventListener('input', e => {
     if (e.target.value.length <= 0) RenderChats(true, false, ...user.chats)
-    document.querySelector("#search > div > svg").style.display = e.target.value.length > 0 ? "block" : "none"
+    searchInputBack.style.display = e.target.value.length > 0 ? "block" : "none"
 })
 
-document.querySelector("#search > div > svg").addEventListener('click', () => {
+searchInputBack.addEventListener('click', () => {
     searchInput.value = ""
     searchInput.dispatchEvent(new Event("input"))
     RenderChats(true, false, ...user.chats)
@@ -121,7 +123,8 @@ searchInput.addEventListener('keydown', async e => {
             `
             queryDataViewElement.children[0].onclick = closeView
             queryDataViewElement.children[2].onclick = () => {
-                queryData.owner ? socket.emit("group", { action: "join", token: queryData.inviteToken, uid: queryData.uid }) : socket.emit("dm", { action: "create", userUID: queryData.uid })
+                searchInputBack.dispatchEvent(new Event("click"))
+                socket.emit(queryData.owner ? "group" : "dm", queryData.owner ? { action: "join", token: queryData.inviteToken, uid: queryData.uid } : { action: "create", userUID: queryData.uid })
                 closeView()
                 searchInput.value = ''
             }
@@ -138,7 +141,6 @@ document.querySelectorAll("#filter-view > li").forEach(li => li.addEventListener
 }))
 
 document.getElementById("newGroupForm").addEventListener('submit', e => {
-    e.preventDefault()
     const fileReader = new FileReader()
     fileReader.onloadend = _e => {
         for (let i = 0; i < _e.target.result.length / fileChunkSize; i++)
@@ -151,8 +153,6 @@ document.getElementById("newGroupForm").addEventListener('submit', e => {
         ToggleGroupImageDisplay()
     }
     fileReader.readAsDataURL(e.target[2].files[0])
-    e.target.offsetParent.classList.add("hidden")
-    document.getElementById("background").classList.add("hidden")
 })
 
 messageView.addEventListener('scroll', async e => {
@@ -169,10 +169,7 @@ messageView.addEventListener('scroll', async e => {
 })
 
 document.getElementById("sendInviteForm").addEventListener('submit', e => {
-    e.preventDefault()
     if (e.target[1].disabled) return
-    e.target.parentElement.classList.add("hidden")
-    document.getElementById("background").classList.add("hidden")
     socket.emit('invite', { to: e.target[0].value, chatID: e.target[1].value, action: "create" })
     e.target[0].value = ''
     e.target[1].value = ''
@@ -188,14 +185,11 @@ socket.on("connect", () => {
             if (!b.messages[b.messages.length - 1]) return -1
             return new Date(b.messages[b.messages.length - 1].date) - new Date(a.messages[a.messages.length - 1].date)
         })
-        for (const chat of user.chats) {
-            if (!chat.image && !chat.name) {
-                
-            }
-            RenderChats(true, false, chat)
+        user.chats.forEach(chat => {
+            RenderChats(false, false, chat)
             ToggleNotification(chat)
-        }
-        info.children[0].src = (user.image == "default" || !user.image) ? "../assets/default.webp" : user.image
+        })
+        info.children[0].src = user.image
         info.children[1].innerText = `${user.name}@${user.uid}`
         clearInterval(loadingInterval)
         loadingIntro.remove()
@@ -318,7 +312,7 @@ socket.on("connect", () => {
 })
 
 function ShowErrorCard(message) {
-    RenderElements("main-view", message => `<span>X</span><p>${message.content}</p><div></div>`, false, false, (_, e) => e.target.tagName == "SPAN" && e.path[1].remove(), null, { id: "error-card", content: message })
+    RenderElements("main-view", message => `<div class="flex-set"><img src="./assets/warn.webp"/><span>${message.content}</span></div><span id="close">X</span><div></div>`, false, false, (_, e) => e.target.id == "close" && e.target.parentElement.remove(), null, { id: "error-card", content: message })
     setTimeout(() => document.getElementById("error-card")?.remove(), 3503)
 }
 
@@ -346,17 +340,6 @@ function SendMessageHandle() {
     messageInp.value = ""
     messageInp.removeAttribute("messageToEditID")
     fileSC.children[0].dispatchEvent(new Event('click'))
-}
-
-function OpenModal(e) {
-    const bg = document.getElementById("background")
-    const modal = document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`)
-    bg.classList.remove("hidden")
-    bg.onclick = () => {
-        modal.classList.add("hidden")
-        bg.classList.add("hidden")
-    }
-    modal.classList.remove("hidden")
 }
 
 function ToggleFile(file) {
@@ -429,8 +412,8 @@ function RenderChats(clear, prepend, ...chats) {
             document.getElementById(chat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
             const chatResponse = (user.chats[selectedChat]?.remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}${!chat.owner && "&isDM=true" }`)).json()).chat
             user.chats[selectedChat] = { ...user.chats[selectedChat], ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
-            chatInfo.children[0].src = chat.image == "default" ? "./assets/default.webp" : `./api/upload/${chat.image}`
-            chatInfo.children[1].children[0].innerText = user.chats[selectedChat].name
+            chatInfo.children[0].src = chat.image ? `./api/upload/${chat.image}` : chat.users.find(_user => _user.uid != user.uid).image
+            chatInfo.children[1].children[0].innerText = user.chats[selectedChat].name || chat.users.find(_user => _user.uid != user.uid).name
             messageView.style.display = "flex"
             document.getElementById("messageInput").style.display = "flex"
             chatInfo.classList.remove("hidden")
@@ -452,7 +435,7 @@ function RenderChats(clear, prepend, ...chats) {
             menu.onclick = e => {
                 if (e.target.id == "delete" || e.target.id == "leave") selectedChat = null
                 if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "dm", { id: chat._id, action: e.target.id })
-                OpenModal({ target: { id: "groupEdit" } })
+                document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).showModal()
             }
         }
     }, () => ["chat", "flex-set", "data-element"], ...chats)
