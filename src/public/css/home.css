@@ -153,36 +153,33 @@ h1, p { margin: 0; }
         text-align: start;
         font-size: 0.7pc;
         display: inline;
-    }
-}
-
-.message .message-content .file {
-    display: flex;
-    align-items: center;
-    background-color: var(--second-darken-color-theme);
-    border-radius: .3rem;
-    padding: 10px;
-    min-width: 32vw;
-    justify-content: space-between;
-}
-
-.message .hidden-content {
-    border-radius: .2rem;
-    transition: 300ms;
-    background-color: black; 
-    color: black;
-}
-
-.message .hidden-content:hover { 
-    visibility: visible;
-    background: none; 
-}
-
-.message.user {
-    font-weight: bold;
-    color: black;
-    align-self: flex-end;
-    background-color: var(--second-color-theme);
+    };
+    & .message-content .file {
+        display: flex;
+        align-items: center;
+        background-color: var(--main-darken-color-theme);
+        border-radius: .3rem;
+        padding: 10px;
+        min-width: 32vw;
+        justify-content: space-between;
+    };
+    & .hidden-content {
+        border-radius: .2rem;
+        transition: 300ms;
+        background-color: black; 
+        color: black;
+        &:hover { 
+            visibility: visible;
+            background: none; 
+        };
+    };
+    &.user {
+        font-weight: bold;
+        color: black;
+        align-self: flex-end;
+        background-color: var(--second-color-theme);
+    };
+    &.user .message-content .file { background-color: var(--second-darken-color-theme); };
 }
 
 .modal {

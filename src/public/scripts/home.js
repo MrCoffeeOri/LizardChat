@@ -63,7 +63,7 @@ window.addEventListener("click", e => {
 
 fileInp.addEventListener("input", e => {
     const reader = new FileReader()
-    reader.onloadend = _e => !document.getElementById("newGroup-modal").classList.contains("hidden") ? ToggleGroupImageDisplay(_e.target.result) : ToggleFile({ name: e.target.files[0].name, url: _e.target.result, size: e.target.files[0].size }) 
+    reader.onloadend = _e => document.getElementById("newGroup-modal").open ? ToggleGroupImageDisplay(_e.target.result) : ToggleFile({ name: e.target.files[0].name, url: _e.target.result, size: e.target.files[0].size }) 
     reader.readAsDataURL(e.target.files[0])
 })
 
