@@ -5,21 +5,22 @@ const socket = io(window.location.host, { auth: { token: authToken, userID: new 
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const messageView = document.getElementById("messages-view")
 const messageInp = document.querySelector(`#messageInput > input[type="text"]`)
-const fileInp = document.getElementById("groupImage")
 const searchInput = document.querySelector("#search > div > input")
 const searchInputBack = document.querySelector("#search > div > svg")
 const fileSelec = document.querySelectorAll("#messageInput > svg")[0]
+const messageFileInp = document.getElementById("fileInp")
+const groupFileInp = document.getElementById("fileGroupInput")
 const loadingIntro = document.getElementById("loading-intro")
 const chatInfo = document.getElementById("chat-info")
 const groupImageDisplay = document.getElementById("groupImageDisplay")
 const inviteNotification = document.getElementById("invites-notification")
 const fileSC = document.getElementById("file-showcase")
-const fileChunkSize = 1000
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
 const parseMessageContent = (content, limit = true) => (content.length > 200 && limit ? content.slice(0, 200) + '...' : content)
     .replaceAll(/<|>/g, char => char == '<' ? "&lt;" : "&gt;")
     .replaceAll(/\((\^|\$|\_)[^\^\$\_\(\)]+\S\)/g, word => `<span style="${word[1] == '^' ? "font-size: 1.3pc;" : `text-decoration: ${word[1] == '$' ? "line-through" : word[1] == '_' ? "underline": "none"};`}">${word.slice(2, word.length - 1)}</span>`)
     .replaceAll(/(https?:\/\/[^\s\<\>]+)/g, url => url.match(/(\.png|\.webp|\.gif|\.jpg|\.jpeg)\b/g) ? `<img src="${url}"/>` : url.match(/youtube\.com\/watch\?v=[^\s]+/g) ? `<iframe width="100%" height="200" src="https://www.youtube.com/embed/${url.split('=')[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${url}" target="_blank">${url}</a>`)
+const parseChatMessageDisplay = message => `${(message.content.name || message.content).slice(0, 10) + ((message.content.name || message.content).length > 10 ? '...' : '')} ${new Date(message.date).toLocaleTimeString()}`
 let selectedChat = null, user = null
 
 if (new URLSearchParams(window.location.search).get('firstTime')) {
@@ -35,12 +36,13 @@ if (new URLSearchParams(window.location.search).get('firstTime')) {
     }
 }
 
-document.querySelectorAll("#messageInput > svg")[1].addEventListener('click', SendMessageHandle)
+notificationAudio.volume = 0.70
+document.querySelectorAll("#messageInput > svg")[1].addEventListener('click', async () => await SendMessageHandle())
 document.querySelectorAll("dialog").forEach(dialog => dialog.addEventListener("click", e => e.target.tagName == "DIALOG" && e.target.close()))
-messageInp.addEventListener("keydown", e => e.key == "Enter" && SendMessageHandle())
-fileSelec.addEventListener('click', () => !fileSC.hasAttribute("file") && fileInp.click())
-fileSC.children[3].addEventListener("click", () => fileInp.click())
-groupImageDisplay.addEventListener("click", () => fileInp.click())
+messageInp.addEventListener("keydown", async e => e.key == "Enter" && await SendMessageHandle())
+fileSelec.addEventListener('click', () => !fileSC.hasAttribute("file") && messageFileInp.click())
+fileSC.children[3].addEventListener("click", () => messageFileInp.click())
+groupImageDisplay.addEventListener("click", () => groupFileInp.click())
 chatInfo.children[1].children[1].addEventListener("mouseleave", e => e.target.innerText = "See more information")
 
 chatInfo.children[1].children[1].addEventListener("mouseenter", e => {
@@ -61,11 +63,11 @@ window.addEventListener("click", e => {
     document.getElementById(`${e.target.getAttribute("viewid") || e.target.closest(`*[viewid]`)?.getAttribute("viewid")}-view`)?.classList.toggle("hidden")
 })
 
-fileInp.addEventListener("input", e => {
+document.querySelectorAll(".fileIn").forEach(fileInp => fileInp.addEventListener("input", e => {
     const reader = new FileReader()
-    reader.onloadend = _e => document.getElementById("newGroup-modal").open ? ToggleGroupImageDisplay(_e.target.result) : ToggleFile({ name: e.target.files[0].name, url: _e.target.result, size: e.target.files[0].size }) 
+    reader.onloadend = _e => { document.getElementById("newGroup-modal").open ? ToggleGroupImageDisplay(_e.target.result) : ToggleFile({ name: e.target.files[0].name, url: _e.target.result, size: e.target.files[0].size }) }
     reader.readAsDataURL(e.target.files[0])
-})
+}))
 
 document.querySelectorAll("#options-view li").forEach(li => li.addEventListener('click', e => {
     if (e.target.id == "sendInvite") {
@@ -129,7 +131,7 @@ searchInput.addEventListener('keydown', async e => {
                 searchInput.value = ''
             }
         }, () => ["data-element"], ...query)
-    } else if (e.key == "Enter") ShowErrorCard("Enter a search query")
+    } else if (e.key == "Enter") ShowInfoCard("Enter a search query")
 })
 
 document.querySelectorAll("#filter-view > li").forEach(li => li.addEventListener('click', (e) => {
@@ -140,19 +142,12 @@ document.querySelectorAll("#filter-view > li").forEach(li => li.addEventListener
     searchInput.setAttribute('filter', e.target.id)
 }))
 
-document.getElementById("newGroupForm").addEventListener('submit', e => {
-    const fileReader = new FileReader()
-    fileReader.onloadend = _e => {
-        for (let i = 0; i < _e.target.result.length / fileChunkSize; i++)
-            socket.emit("file", _e.target.result.slice(fileChunkSize * i, fileChunkSize * i + fileChunkSize).trim())
-        socket.emit("file", null, true, "png")
-        socket.emit('group', { name: e.target[0].value, description: e.target[1].value, action: "create" })
-        e.target[0].value = ""
-        e.target[1].value = ""
-        e.target[2].files = null
-        ToggleGroupImageDisplay()
-    }
-    fileReader.readAsDataURL(e.target[2].files[0])
+document.getElementById("newGroupForm").addEventListener('submit', async e => {
+    socket.emit('group', { name: e.target[0].value, description: e.target[1].value, image: await UploadFile(e.target[2].getAttribute("file"), ".webp"), action: "create" })
+    e.target[0].value = ""
+    e.target[1].value = ""
+    e.target.children[3].style = ""
+    ToggleGroupImageDisplay()
 })
 
 messageView.addEventListener('scroll', async e => {
@@ -176,23 +171,25 @@ document.getElementById("sendInviteForm").addEventListener('submit', e => {
 })
 
 socket.on("connect", () => {
+    socket.recovered && ShowInfoCard("Reconnected", 5000, "var(--second-darken-color-theme)")
     socket.on("user", response => {
-        const info = document.getElementById("info")
-        user = response
-        console.log(user)
-        user.chats.sort((a, b) => {
-            if (!a.messages[a.messages.length - 1]) return 0
-            if (!b.messages[b.messages.length - 1]) return -1
-            return new Date(b.messages[b.messages.length - 1].date) - new Date(a.messages[a.messages.length - 1].date)
-        })
-        user.chats.forEach(chat => {
-            RenderChats(false, false, chat)
-            ToggleNotification(chat)
-        })
-        info.children[0].src = user.image
-        info.children[1].innerText = `${user.name}@${user.uid}`
-        clearInterval(loadingInterval)
-        loadingIntro.remove()
+        if (!user) {
+            const info = document.getElementById("info")
+            user = response
+            user.chats.sort((a, b) => {
+                if (!a.messages[a.messages.length - 1]) return 0
+                if (!b.messages[b.messages.length - 1]) return -1
+                return new Date(b.messages[b.messages.length - 1].date) - new Date(a.messages[a.messages.length - 1].date)
+            })
+            user.chats.forEach(chat => {
+                RenderChats(false, false, chat)
+                ToggleNotification(chat)
+            })
+            info.children[0].src = user.image
+            info.children[1].innerText = `${user.name}@${user.uid}`
+            clearInterval(loadingInterval)
+            loadingIntro.remove()
+        }
     })
 
     socket.on("invite", response => {
@@ -219,13 +216,13 @@ socket.on("connect", () => {
     socket.on("userInChat", async response => {
         const resUser = await (await fetch(`/api/user/find/${response.userUID}`)).json()
         if (!resUser.user)
-            return ShowErrorCard(resUser.error)
+            return ShowInfoCard(resUser.error)
 
-        user.chats.find(chat => chat._id == response.id).users.push(resUser.user)
         if (response.id == user.chats[selectedChat]?._id) {
             user.chats[selectedChat].users.push(resUser.user)
             chatInfo.children[1].innerText = (chatInfo.children[1].innerText + ", " + resUser.user.name).slice(0, 50) + (chatInfo.children[1].innerText.length > 50 ? "..." : '')
-        }
+        } else
+            user.chats.find(chat => chat._id == response.id).users.push(resUser.user)
     })
 
     socket.on("message", response => {
@@ -235,7 +232,7 @@ socket.on("connect", () => {
                 document.getElementById(chat._id).remove()
                 RenderChats(false, true, chat)
                 chat.messages.push(response.message)
-                document.getElementById(chat._id).children[3].innerText = response.message.contentType == "text" ? `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}` : response.message.content.name
+                document.getElementById(chat._id).children[3].innerText = parseChatMessageDisplay(response.message)
                 if (selectedChat == null || user.chats[selectedChat]._id != response.chatID) {
                     notificationAudio.play()
                     chat.newMessages++
@@ -250,14 +247,14 @@ socket.on("connect", () => {
             case "edit":
                 chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].content = response.message.content
                 if (chat.messages[chat.messages.length - 1].id == response.message.id && chat.messages[chat.messages.length - 1].contentType == "text") 
-                    document.getElementById(chat._id).children[3].innerText = `${response.message.content.slice(0, 10) + (response.message.content.length > 10 ? '...' : '')} ${new Date(response.message.date).toLocaleTimeString()}`;
+                    document.getElementById(chat._id).children[3].innerText = parseChatMessageDisplay(response.message)
                 if (user.chats[selectedChat]?._id == response.chatID) 
                     document.getElementById(response.message.id).children[0].innerHTML = response.message.contentType == "text" ? parseMessageContent(response.message.content, false) :  (response.message.content.url.includes("image") ? `<img src="${response.message.content.url}" alt="${response.message.content.name}"/>` : `<div class="file"><span>${response.message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${response.message.content.name}" href="${response.message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(response.message.content.description)}</p>`;
                 break;
 
             case "delete":
                 if (chat.messages[chat.messages.length - 1].id == response.message.id)
-                    document.getElementById(chat._id).children[3].innerText = chat.messages[chat.messages.length - 2] ? chat.messages[chat.messages.length - 2].contentType == "text" ? `${chat.messages[chat.messages.length - 2].content.slice(0, 10) + (chat.messages[chat.messages.length - 2].content.length > 10 ? '...' : '')} ${new Date(chat.messages[chat.messages.length - 2].date).toLocaleTimeString()}` : chat.messages[chat.messages.length - 2].content.name : null;
+                    document.getElementById(chat._id).children[3].innerText = chat.messages[chat.messages.length - 2] ? parseChatMessageDisplay(chat.messages[chat.messages.length - 2]) : null;
                 if (user.chats[selectedChat]?._id == response.chatID) 
                     document.getElementById(response.message.id).remove();
                 chat.messages.splice(chat.messages.findIndex(message => message.id == response.message.id), 1)
@@ -272,12 +269,7 @@ socket.on("connect", () => {
 
     socket.on("error", response => {
         if (response.error == "Invalid authentication") window.location.href = "/"
-        ShowErrorCard(response.error)
-    })
-
-    socket.on("disconnect", () => {
-        user = null
-        window.location.href = "/disconnected.html"
+        ShowInfoCard(response.error)
     })
 
     socket.on("chat", response => {
@@ -309,11 +301,13 @@ socket.on("connect", () => {
                 break;
         }
     })
+
+    socket.on("disconnect", () => ShowInfoCard("Connection Offline", 6000))
 })
 
-function ShowErrorCard(message) {
-    RenderElements("main-view", message => `<div class="flex-set"><img src="./assets/warn.webp"/><span>${message.content}</span></div><span id="close">X</span><div></div>`, false, false, (_, e) => e.target.id == "close" && e.target.parentElement.remove(), null, { id: "error-card", content: message })
-    setTimeout(() => document.getElementById("error-card")?.remove(), 3503)
+function ShowInfoCard(message, time = 3500, color = "var(--error-card-color)") {
+    RenderElements("main-view", message => `<div class="flex-set"><img src="./assets/warn.webp"/><span>${message.content}</span><span id="close">X</span></div><div style="animation: CloseCard ${time}ms forwards ease-in-out;"></div>`, false, false, (_, e) => e.target.id == "close" && e.target.parentElement.remove(), null, { id: "error-card", content: message })[0].style.backgroundColor = color
+    setTimeout(() => document.getElementById("error-card")?.remove(), time)
 }
 
 function ToggleNotification(chat) {
@@ -325,20 +319,24 @@ function ToggleNotification(chat) {
 function ToggleGroupImageDisplay(imageSrc) {
     groupImageDisplay.src = imageSrc || "./assets/default.webp"
     groupImageDisplay.style.border = imageSrc ? "2px solid var(--second-color-theme)" : ''
+    imageSrc ? groupFileInp.setAttribute("file", imageSrc) : groupFileInp.removeAttribute("file")
 }
 
-function SendMessageHandle() {
-    if (!fileSC.hasAttribute("file") && (!messageInp.value || messageInp.value.match(/\&[^\s\&\;]+\;|^\s+$/g))) return
+async function SendMessageHandle() {
+    if (!messageFileInp.hasAttribute("file") && (!messageInp.value || messageInp.value.match(/\&[^\s\&\;]+\;|^\s+$/g))) return
+    const fileToSend = messageFileInp.hasAttribute("file") && JSON.parse(messageFileInp.getAttribute("file"))
+    if (fileToSend) fileToSend.url = await UploadFile(fileToSend.url, fileToSend.type, messageInp.getAttribute("messageToEditID"))
     const rawMessage = { 
         id: Number(messageInp.getAttribute("messageToEditID")) || crypto.getRandomValues(new Int16Array(10))[0], 
-        contentType: fileSC.hasAttribute("file") ? "file" : "text", 
-        content: fileSC.hasAttribute("file") ? {...JSON.parse(fileSC.getAttribute("file")), description: messageInp.value.trim() } : messageInp.value.trim(), 
+        contentType: messageFileInp.hasAttribute("file") ? "file" : "text", 
+        content: fileToSend ? {...fileToSend, description: messageInp.value.trim() } : messageInp.value.trim(), 
         chatID: user.chats[selectedChat]._id, 
     }
     socket.emit('message', { ...rawMessage, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send", chatType: user.chats[selectedChat].owner ? "group" : "dm" })
     !messageInp.hasAttribute("messageToEditID") && RenderMessages(false, false, true, { ...rawMessage, from: { uid: user.uid }, date: new Date() })
     messageInp.value = ""
     messageInp.removeAttribute("messageToEditID")
+    messageFileInp.removeAttribute("file")
     fileSC.children[0].dispatchEvent(new Event('click'))
 }
 
@@ -347,7 +345,24 @@ function ToggleFile(file) {
     fileSC.children[1].innerHTML = !file ? null : file.url.includes("image") ? `<img style="width: 44%;" src="${file.url}" alt="${file.name}"/>` : `<svg style="width: 40%;" viewBox="0 0 88 110" width="88" height="110" class=""><path stroke-opacity=".08" stroke="#000" d="M7 2.5h56.929a5.5 5.5 0 0 1 3.889 1.61l15.071 15.072a5.5 5.5 0 0 1 1.611 3.89V104a3.5 3.5 0 0 1-3.5 3.5H7a3.5 3.5 0 0 1-3.5-3.5V6A3.5 3.5 0 0 1 7 2.5z" fill="#FFF" fill-rule="evenodd"></path><path d="M65.5 3.5v15a3 3 0 0 0 3 3h15" stroke-opacity=".12" stroke="#000" fill="#FFF"></path></svg> <h3>${file.name}</h3>`
     fileSC.children[2].innerText = !file ? null : (file.size / 1000) + " KB"
     fileSelec.style.display = !file ? "block" : "none"
-    !file ? fileSC.removeAttribute("file") : fileSC.setAttribute("file", JSON.stringify(file))
+    !file ? messageFileInp.removeAttribute("file") : messageFileInp.setAttribute("file", JSON.stringify({ ...file, type: /\.\w+$/g.exec(file.name)[0].trim() }))
+}
+
+async function UploadFile(url, type, oldUrl = undefined) {
+    const chunkSize = 10000
+    const totalChunks = Math.ceil(url.length / chunkSize)
+    let response;
+    for (let currentChunk = 0; currentChunk <= totalChunks; currentChunk++) {
+        response = await fetch(`/api/upload?userUID=${user.uid}`, {
+            method: "POST",
+            headers: { 
+                'Content-Type': 'application/json',
+                'Content-Length': chunkSize
+            },
+            body: JSON.stringify({ chunk: url.slice(currentChunk * chunkSize, currentChunk * chunkSize + chunkSize), length: url.length, fileType: type, oldFile: oldUrl })
+        })
+    }
+    return (await response.json()).filePath
 }
 
 function RenderMessages(clear, prepend, scroll, ...messages) {
@@ -355,7 +370,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
     ${message.from.uid != user.uid ? 
         `<p class="message-header">${message.from.name}-${message.from.uid}</p>` : '' }
         <div class="message-content">
-            ${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.url.includes("image") ? `<img src="${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}
+            ${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.type.match(/png|jpeg|jpg|webp/g) ? `<img src="./api/upload/${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="./api/upload/${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}
         </div>
         ${message.content?.description?.length > 200 || message.content?.length > 200 ? `<span class="extend-message">See more ${message.content?.description?.length - 200 || message.content?.length - 200}</span>` : ''}
         <p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, 
@@ -373,10 +388,10 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
             const menu = document.getElementById("messageConfigs-view")
             menu.style.left = e.pageX - (e.pageX + (innerWidth * 0.05) > innerWidth ? (innerWidth * 0.04) : 0) + "px"
             menu.style.top = e.pageY - (e.pageY + (innerHeight * 0.05) > innerHeight ? (innerHeight * 0.04) : 0) + "px"
-            menu.children[2].style.display = message.content.url?.includes("image") ? "block" : "none"
+            menu.children[2].style.display = message.content.url ? "block" : "none"
             menu.onclick = _e => {
                 if (_e.target.id == "delete")
-                    return socket.emit("message", { chatID: user.chats[selectedChat]._id, id: message.id, chatType: user.chats[selectedChat].owner ? "group" : "dm", action: 'delete' })
+                    return socket.emit("message", { chatID: user.chats[selectedChat]._id, id: message.id, contentURL: message.content.url, contentType: message.content.url ? "file" : "text", chatType: user.chats[selectedChat].owner ? "group" : "dm", action: 'delete' })
                     
                 if (_e.target.id == "edit") {
                     messageInp.setAttribute("messageToEditID", message.id)
@@ -384,7 +399,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                     messageInp.focus()
                     return message.contentType == "file" && ToggleFile(message.content)
                 }
-                if (_e.target.id == "download" && message.content?.url.includes("image")) {
+                if (_e.target.id == "download" && message.content?.url) {
                     const dLink = document.createElement("a")
                     dLink.href = message.content.url
                     dLink.setAttribute("download",  message.content.name)
@@ -401,7 +416,7 @@ function RenderChats(clear, prepend, ...chats) {
         `<img src="${chat.image ? "./api/upload/" + chat.image : chat.users.find(_user => _user.uid != user.uid).image}" alt="group image"/>
         <span style="display: inline">${chat.name || chat.users.find(_user => _user.uid != user.uid).name}</span>
         <span></span>
-        <span>${chat.messages[chat.messages.length - 1] ? chat.messages[chat.messages.length - 1].contentType == "text" ? chat.messages[chat.messages.length - 1].content.slice(0, 10) + (chat.messages[chat.messages.length - 1].content.length > 10 ? '...' : '') + ' ' + new Date(chat.messages[chat.messages.length - 1].date).toLocaleTimeString() : chat.messages[chat.messages.length - 1].content.name : ''}</span>
+        <span>${chat.messages[chat.messages.length - 1] ? parseChatMessageDisplay(chat.messages[chat.messages.length - 1]) : ''}</span>
         <svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
     clear, prepend, 
     async (chat, e) => {
@@ -458,6 +473,7 @@ function RenderInvites(clear, ...invites) {
 
 function RenderElements(viewID, innerHTML, clear, prepend, onclick, classList, ...elements) {
     if (elements.length == 0 && !clear) return
+    let rElements = []
     const viewElement = document.getElementById(viewID)
     if (clear) viewElement.innerHTML = ''
     elements.forEach(element => {
@@ -467,5 +483,7 @@ function RenderElements(viewID, innerHTML, clear, prepend, onclick, classList, .
         if (classList) elementToRender.className = classList(element).join(' ')
         if (onclick) elementToRender.addEventListener('click', async e => await onclick(element, e))
         prepend ? viewElement.prepend(elementToRender) : viewElement.appendChild(elementToRender)
+        rElements.push(elementToRender)
     })
+    return rElements
 }

@@ -4,7 +4,7 @@ import { createTransport } from "nodemailer";
 import { ConfirmationToken } from "../models/cfmToken.model.js";
 import { Group } from "../models/group.model.js";
 import { User } from "../models/user.model.js";
-import { LengthUUID } from "../../helpers/UUID.js"
+import { LengthUUID } from "../helpers/UUID.js"
 
 const tranport = createTransport({
     host: process.env.EMAIL_HOST,
@@ -20,7 +20,7 @@ export default Router()
             return res.status(400).json({ error: "User data is missing" })
 
         if (!req.body.password.match(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/g))
-            return res.status(400).json({ error: "Minimum eight characters, at least one letter and one number" })
+            return res.status(400).json({ error: "Minimum eight characters, at least one letter, one number and no symbols" })
         
         if (await User.exists({ $or: [{ email: req.body.email }, { name: req.body.name }] }))
             return res.status(403).json({ error: "Email or name already used" })

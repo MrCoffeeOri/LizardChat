@@ -1,8 +1,7 @@
 import express, { json } from 'express'
 import cors from 'cors'
-import { writeFile, rm, mkdir } from 'fs/promises'
+import { rm, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
-import crypto from "crypto"
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
 import { connect } from 'mongoose'
@@ -15,11 +14,11 @@ import { Group } from './models/group.model.js'
 import { User } from './models/user.model.js'
 import { Dm } from './models/dm.model.js'
 import { Invite } from './models/invite.model.js'
+import uploadPath from './helpers/uploadPath.js'
 
 const app = express()
 const server = createServer(app)
 const io = new Server(server)
-const uploadPath = `${process.cwd()}/src/server/uploads/`
 
 !existsSync(uploadPath) && await mkdir(uploadPath)
 config()
@@ -33,7 +32,6 @@ app.use(express.static('./src/public'))
 io.on('connection', async socket => {
     const checkError = document => (document?.errors?.message || !document) && socket.emit('error', { error: document?.errors?.message || "Invalid request"})
     const user = await User.FindByUID(socket.handshake.auth.userID)
-    let tmpFile = { data: '', id: null }
     if (!user || user.authToken != socket.handshake.auth.token)
         return socket.emit('error', { error: "Invalid authentication" })
     
@@ -50,16 +48,6 @@ io.on('connection', async socket => {
                 return socket.disconnect()
         }
         next()
-    })
-
-    socket.on("file", async (chunk, complete, type) => {
-       if (complete) {
-            tmpFile.id = `${user.uid}@${crypto.randomUUID()}.${type}`
-            await writeFile(uploadPath + tmpFile.id, Buffer.from(tmpFile.data.split(',')[1], 'base64'))
-            tmpFile.data = null
-       }
-       else
-            tmpFile.data += chunk
     })
 
     socket.on('dm', async (data) => {
@@ -94,7 +82,7 @@ io.on('connection', async socket => {
     socket.on('group', async data => {
         switch (data.action) {
             case "create":
-                const newGroup = new Group({ name: data.name, description: data.description, image: tmpFile.id, owner: user.uid, users: [{ uid: user.uid, isOwner: true, isBlocked: false }] })
+                const newGroup = new Group({ name: data.name, description: data.description, image: data.image, owner: user.uid, users: [{ uid: user.uid, isOwner: true, isBlocked: false }] })
                 const newObjGroup = newGroup.toObject()
                 user.chats.push(newObjGroup)
                 await newGroup.save()
@@ -106,7 +94,8 @@ io.on('connection', async socket => {
                 if (checkError(deletGroup)) return
                 user.chats = user.chats.filter(chat => chat._id == data.id && chat.owner == user.uid)
                 io.to(data.id).emit("chat", { id: data.id, action: data.action })
-                rm(uploadPath + deletGroup.image)
+                deletGroup.messages.forEach(async message => message.contentType == "file" && await rm(uploadPath + message.content.url))
+                await rm(uploadPath + deletGroup.image)
                 return io.socketsLeave(data.id)
             
             case "rename":
@@ -130,30 +119,24 @@ io.on('connection', async socket => {
         }
     })
 
-    /*
-    socket.on('userInChat',  async (data) => {
-        if (!Group.data[data.groupID].users[data.userID] || data.userUID == user.uid)
+    socket.on('userInChat', async (data) => {
+        if (data.userUID == user.uid)
             return socket.emit('error', { error: 'Invalid user' })
 
         switch (data.action) {
             case "unblock":
             case "block":
-                Group.data[data.groupID].users[data.userID].isBlocked = data.action == "block"
+                if (checkError(await Group.findOneAndUpdate({ _id: data.groupID, owner: user.uid, users: [data.userUID] }, { "users.$[user].isBlocked": true }, { arrayFilters: [{ "user.uid": data.userUID }] }))) return
                 break;
 
             case "kick":
-                delete Group.data[data.groupID].users[data.userID]
-                delete users.data[data.userID].groups[data.groupID]
+                if (checkError(await Group.findOneAndUpdate({ _id: data.groupID, owner: user.uid, users: [data.userUID] }, { $pull: { users: { uid: data.userUID } } }))) return
+                user.chats = user.chats.filter(chat => chat._id != data.id)
                 break;
         }
-        await users.write()
-        await Group.write()
-        socket.to(data.groupID).emit('userInChat', { users: Group.data[data.groupID].users, id: data.groupID, action: data.action })
-        if (data.action == "kick") {
-            const userToKickSocket = (await io.in(data.groupID).fetchSockets()).find(socket => user.uid == data.userID)
-            userToKickSocket && userToKickSocket.leave(data.groupID)
-        }
-    })*/
+        socket.to(data.groupID).emit('userInChat', { user: data.userUID, id: data.groupID, action: data.action })
+        data.action == "kick" && (await io.in(data.groupID).fetchSockets()).find(socket => socket.data.userUID == data.userUID).leave(data.groupID)
+    })
 
     socket.on('invite', async data => {
         switch (data.action) {
@@ -176,7 +159,7 @@ io.on('connection', async socket => {
                 if (checkError(handleInvite)) return
                 if (data.method == "accept") {
                     group = await Group.findOneAndUpdate({ _id: handleInvite.group.id, inviteToken: handleInvite.group.token }, { $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } }, { returnDocument: "after", projection: { messages: 0 } })
-                    io.to(group._id.toString()).emit('userInChat', { userUID: user.uid, id: group._id.toString() })
+                    io.to(group._id.toString()).emit('userInChat', { user: { ...user, password: undefined, email: undefined }, id: group._id.toString() })
                     await socket.join(group._id.toString())
                 }
                 user.invites = user.invites.filter(_invite => _invite._id == handleInvite._id)
@@ -190,6 +173,10 @@ io.on('connection', async socket => {
             _id: data.chatID, 
             ...(data.chatType == "dm" ? { "users": user.uid } : { "users.uid": user.uid }),
             ...(data.action != "send" && { "messages.id": data.id, ...(data.action == "view" && { "messages.from": { $not: { $eq: user.uid } } }) }), 
+        }
+        if ((data.action == "edit" || data.action == "delete") && data.contentType == "file") {
+            await rm(uploadPath + data.contentURL)
+            data.action == "edit" && await writeFile(uploadPath + filePath, Buffer.from(tmpFiles[req.query.userUID].split(',')[1], 'base64'))
         }
         const update = 
             data.action == "send" ? { $push: { messages: { from: { name: user.name, uid: user.uid }, contentType: data.contentType, id: data.id, content: data.content, views: [user.uid], date: new Date() } } } :
