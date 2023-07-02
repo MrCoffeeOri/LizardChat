@@ -349,7 +349,7 @@ function ToggleFile(file) {
 }
 
 async function UploadFile(url, type, oldUrl = undefined) {
-    const chunkSize = 10000
+    const chunkSize = 100000
     const totalChunks = Math.ceil(url.length / chunkSize)
     let response;
     for (let currentChunk = 0; currentChunk <= totalChunks; currentChunk++) {
