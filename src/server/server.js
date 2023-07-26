@@ -30,7 +30,7 @@ app.use("/api/query", queryRouter)
 app.use("/api/upload", uploadRouter)
 app.use(express.static('./src/public'))
 io.on('connection', async socket => {
-    const checkError = document => (document?.errors?.message || !document) && socket.emit('error', { error: document?.errors?.message || "Invalid request"})
+    const checkError = (document, message) => (!document || document?.errors?.message) && socket.emit('error', { error: message || document?.errors?.message})
     const user = await User.FindByUID(socket.handshake.auth.userID)
     if (!user || user.authToken != socket.handshake.auth.token)
         return socket.emit('error', { error: "Invalid authentication" })
@@ -56,7 +56,7 @@ io.on('connection', async socket => {
         switch (data.action) {
             case "create":
                 const otherUser = await User.findOne({ uid: data.userUID }, { uid: 1, name: 1, image: 1 })
-                if (checkError(otherUser) || await Dm.exists({ users: [user.uid, otherUser.uid] })) return 
+                if (checkError(otherUser, "Invalid user") || checkError(!(await Dm.exists({ $or: [{ users: [user.uid, otherUser.uid] }, { users: [otherUser.uid, user.uid] }] })), "DM already created")) return
                 const otherUserSocket = (await io.sockets.in(data.userUID).fetchSockets())[0]
                 const dm = new Dm({ users: [user.uid, otherUser.uid] })
                 dmObj = { ...dm.toObject(), users: [{ ...user, password: undefined, email: undefined, otherInstance: undefined, authToken: undefined }, otherUser.toObject()] }

@@ -5,7 +5,7 @@ import { Types } from "mongoose";
 
 export default Router()
     .get("/find/:id", async (req, res) => {
-        const chat = await Group.findOne({ _id: req.params.id, isPrivate: false }, { messages: 0, users: 0 })
+        const chat = await Group.findOne({ _id: req.params.id, $or: [{ inviteToken: req.query.inviteToken }, { isPrivate: false }] }, { messages: 0, users: 0 })
         if (!chat)
             return res.status(404).json({ message: "Chat not found" })
         res.status(200).json({ message: "Success", group: chat })
@@ -15,7 +15,7 @@ export default Router()
         chat: { 
             ...req.chat, 
             messages: req.query.messagesAmmount ? req.chat.messages.slice(-req.query.messagesAmmount) : undefined,
-            remainingMessages: req.chat.messages.length - req.query.messagesAmmount > 0,
+            remainingMessages: req.query.messagesAmmount ? req.chat.messages.length - req.query.messagesAmmount > 0 : undefined,
             inviteToken: req.chat.owner == req.query.userUID ? req.chat.inviteToken : undefined 
         }
     }))

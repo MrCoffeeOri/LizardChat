@@ -214,15 +214,7 @@ socket.on("connect", () => {
     })
 
     socket.on("userInChat", async response => {
-        const resUser = await (await fetch(`/api/user/find/${response.userUID}`)).json()
-        if (!resUser.user)
-            return ShowInfoCard(resUser.error)
-
-        if (response.id == user.chats[selectedChat]?._id) {
-            user.chats[selectedChat].users.push(resUser.user)
-            chatInfo.children[1].innerText = (chatInfo.children[1].innerText + ", " + resUser.user.name).slice(0, 50) + (chatInfo.children[1].innerText.length > 50 ? "..." : '')
-        } else
-            user.chats.find(chat => chat._id == response.id).users.push(resUser.user)
+        response.id == user.chats[selectedChat]?._id ? user.chats[selectedChat].users.push(response.user) : user.chats.find(chat => chat._id == response.id).users.push(response.user)
     })
 
     socket.on("message", response => {
@@ -411,49 +403,52 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
 
-function RenderChats(clear, prepend, ...chats) { 
-    RenderElements("data-view", chat => 
-        `<img src="${chat.image ? "./api/upload/" + chat.image : chat.users.find(_user => _user.uid != user.uid).image}" alt="group image"/>
-        <span style="display: inline">${chat.name || chat.users.find(_user => _user.uid != user.uid).name}</span>
-        <span></span>
-        <span>${chat.messages[chat.messages.length - 1] ? parseChatMessageDisplay(chat.messages[chat.messages.length - 1]) : ''}</span>
-        <svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
-    clear, prepend, 
-    async (chat, e) => {
-        if (selectedChat == null || (user.chats[selectedChat]._id != chat._id)) {
-            if (selectedChat != null) 
-                document.getElementById(user.chats[selectedChat]._id).style.backgroundColor = "var(--third-color-theme)"
-            selectedChat = user.chats.findIndex(_chat => _chat._id == chat._id)
-            document.getElementById(chat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
-            const chatResponse = (user.chats[selectedChat]?.remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}${!chat.owner && "&isDM=true" }`)).json()).chat
-            user.chats[selectedChat] = { ...user.chats[selectedChat], ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
-            chatInfo.children[0].src = chat.image ? `./api/upload/${chat.image}` : chat.users.find(_user => _user.uid != user.uid).image
-            chatInfo.children[1].children[0].innerText = user.chats[selectedChat].name || chat.users.find(_user => _user.uid != user.uid).name
-            messageView.style.display = "flex"
-            document.getElementById("messageInput").style.display = "flex"
-            chatInfo.classList.remove("hidden")
-            document.getElementById("messages-placeholder").classList.add("hidden")
-            messageView.classList.remove("hidden")
-            for (let i = user.chats[selectedChat].messages.length - user.chats[selectedChat].newMessages; i < user.chats[selectedChat].messages.length; i++)
-                socket.emit("message", { chatID: user.chats[selectedChat]._id, chatType: chat.owner ? "group" : "dm", id: user.chats[selectedChat].messages[i].id, action: "view" });
-            user.chats[selectedChat].newMessages = 0
-            ToggleNotification(user.chats[selectedChat])
-            RenderMessages(true, false, true, ...user.chats[selectedChat].messages)
-        }
-        if (e.target.tagName == "svg" || e.target.tagName == "path") {
-            const menu = document.getElementById("groupConfigs-view")
-            menu.children[0].id = chat.owner == user.uid ? "delete" : "leave"
-            menu.children[0].innerText = chat.owner == user.uid ? "Delete" : "Leave"
-            menu.children[1].style.display = chat.owner == user.uid ? "block" : "none"
-            menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
-            menu.style.left = e.pageX + "px"
-            menu.onclick = e => {
-                if (e.target.id == "delete" || e.target.id == "leave") selectedChat = null
-                if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "dm", { id: chat._id, action: e.target.id })
-                document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).showModal()
+function RenderChats(clear, prepend, ...chats) {
+    chats.forEach(_chat => {
+        const otherUser = !_chat.owner && _chat.users.find(_user => _user.uid != user.uid)
+        RenderElements("data-view", chat => 
+            `<img src="${chat.image ? "./api/upload/" + chat.image : otherUser.image}" alt="group image"/>
+            <span style="display: inline">${chat.name || otherUser.name + '@' + otherUser.uid}</span>
+            <span></span>
+            <span>${chat.messages[chat.messages.length - 1] ? parseChatMessageDisplay(chat.messages[chat.messages.length - 1]) : ''}</span>
+            <svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
+        clear, prepend, 
+        async (chat, e) => {
+            if (selectedChat == null || (user.chats[selectedChat]._id != chat._id)) {
+                if (selectedChat != null) 
+                    document.getElementById(user.chats[selectedChat]._id).style.backgroundColor = "var(--third-color-theme)"
+                selectedChat = user.chats.findIndex(_chat => _chat._id == chat._id)
+                document.getElementById(chat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
+                const chatResponse = (user.chats[selectedChat]?.remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}${!chat.owner && "&isDM=true" }`)).json()).chat
+                user.chats[selectedChat] = { ...user.chats[selectedChat], ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
+                chatInfo.children[0].src = chat.image ? `./api/upload/${chat.image}` : otherUser.image
+                chatInfo.children[1].children[0].innerText = user.chats[selectedChat].name || otherUser.name
+                messageView.style.display = "flex"
+                document.getElementById("messageInput").style.display = "flex"
+                chatInfo.classList.remove("hidden")
+                document.getElementById("messages-placeholder").classList.add("hidden")
+                messageView.classList.remove("hidden")
+                for (let i = user.chats[selectedChat].messages.length - user.chats[selectedChat].newMessages; i < user.chats[selectedChat].messages.length; i++)
+                    socket.emit("message", { chatID: user.chats[selectedChat]._id, chatType: chat.owner ? "group" : "dm", id: user.chats[selectedChat].messages[i].id, action: "view" });
+                user.chats[selectedChat].newMessages = 0
+                ToggleNotification(user.chats[selectedChat])
+                RenderMessages(true, false, true, ...user.chats[selectedChat].messages)
             }
-        }
-    }, () => ["chat", "flex-set", "data-element"], ...chats)
+            if (e.target.tagName == "svg" || e.target.tagName == "path") {
+                const menu = document.getElementById("groupConfigs-view")
+                menu.children[0].id = chat.owner == user.uid ? "delete" : "leave"
+                menu.children[0].innerText = chat.owner == user.uid ? "Delete" : "Leave"
+                menu.children[1].style.display = chat.owner == user.uid ? "block" : "none"
+                menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
+                menu.style.left = e.pageX + "px"
+                menu.onclick = e => {
+                    if (e.target.id == "delete" || e.target.id == "leave") selectedChat = null
+                    if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "dm", { id: chat._id, action: e.target.id })
+                    document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).showModal()
+                }
+            }
+        }, () => ["chat", "flex-set", "data-element"], _chat)
+    })
 }
 
 function RenderInvites(clear, ...invites) {
@@ -461,12 +456,9 @@ function RenderInvites(clear, ...invites) {
     document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">Loading invites...</h2>`
     invites.forEach(async invite => {
         const fromUser = (await (await fetch(`/api/user/find/${invite.from}`)).json()).user
-        RenderElements("invites-modal", () => `<span>${fromUser.name}-${fromUser.uid}</span><span>${invite.group.name}</span><button method="accept">Join</button><button method="neglect">Delete</button><div class="hidden"><p>${invite.group.description}</p></div>`, clear, false, (_, e) => {
-            if (e.target.tagName == "BUTTON") {
-                socket.emit("invite", { id: e.path[1].id, group: invite.group, action: "handle", method: e.target.getAttribute("method") })
-                e.path[2].classList.add("hidden")
-                document.getElementById("background").classList.add("hidden")
-            }
+        const toGroup = (await (await fetch(`/api/chat/find/${invite.group._id}?inviteToken=${invite.group.token}`)).json()).group
+        RenderElements("invites-modal", () => `<span>${fromUser.name}@${fromUser.uid}</span><span>${toGroup.name}</span><button method="accept">Join</button><button method="neglect">Delete</button><div class="hidden"><p>${toGroup.description}</p></div>`, clear, false, (_, e) => {
+            e.target.tagName == "BUTTON" && socket.emit("invite", { id: e.target.parentElement.id, group: invite.group, action: "handle", method: e.target.getAttribute("method") }) && ShowInfoCard("Group joined", 2000, "rgb(0, 255, 0)")
         }, () => ["invite"], invite)
     })
 }

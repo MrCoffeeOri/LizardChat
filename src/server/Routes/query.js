@@ -9,7 +9,7 @@ export default Router()
             return res.status(400).json({ message: "Query does not exist" })
 
         const queryData = await collection.aggregate([
-            { $match: { $and: [{ isPrivate: false }, { $or: [{ uid: req.params.chars }, { name: new RegExp(req.params.chars, "i")}] }] } },
+            { $match: { $and: [{ isPrivate: false }, { $or: [{ uid: req.params.chars }, { name: new RegExp(req.params.chars, "i") }] }] } },
             { $limit: Number(req.params.limit) },
             { $unset: ["password", "email"] }
         ])
