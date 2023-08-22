@@ -143,6 +143,7 @@ document.querySelectorAll("#filter-view > li").forEach(li => li.addEventListener
 }))
 
 document.getElementById("newGroupForm").addEventListener('submit', async e => {
+    RenderElements("data-view", () => "Creating chat...", false, true, null, () => ["chat", "flex-set", "data-element"], { _id: "pseudochat" })
     socket.emit('group', { name: e.target[0].value, description: e.target[1].value, image: await UploadFile(e.target[2].getAttribute("file"), ".webp"), action: "create" })
     e.target[0].value = ""
     e.target[1].value = ""
@@ -152,7 +153,7 @@ document.getElementById("newGroupForm").addEventListener('submit', async e => {
 
 messageView.addEventListener('scroll', async e => {
     if (e.target.scrollTop == 0 && user.chats[selectedChat] && user.chats[selectedChat].remainingMessages) {
-        const data = (await (await fetch(`/api/chat/${user.chats[selectedChat]._id}/messages/?amount=10&limit=${user.chats[selectedChat].messages.length}&userUID=${user.uid}&userAuthToken=${authToken}`)).json())
+        const data = (await (await fetch(`/api/chat/${user.chats[selectedChat]._id}/messages/?amount=10&limit=${user.chats[selectedChat].messages.length}&userUID=${user.uid}&userAuthToken=${authToken}&isDM=${user.chats[selectedChat].owner}`)).json())
         user.chats[selectedChat].remainingMessages = data.remaining
         messageView.scrollBy(0, document.getElementById(user.chats[selectedChat].messages[0].id).offsetTop)
         user.chats[selectedChat].messages.unshift(...data.messages)
@@ -203,10 +204,7 @@ socket.on("connect", () => {
                 break;
 
             case "handled":
-                if (response.chat) {
-                    user.chats.push(response.chat)
-                    RenderChats(false, true, response.chat)
-                }
+                response.chat && AddChat(response.chat, false, true)
                 user.invites = user.invites.filter(invite => invite.id != response.inviteID)
                 document.getElementById(response.inviteID)?.remove()
                 break;
@@ -214,7 +212,16 @@ socket.on("connect", () => {
     })
 
     socket.on("userInChat", async response => {
-        response.id == user.chats[selectedChat]?._id ? user.chats[selectedChat].users.push(response.user) : user.chats.find(chat => chat._id == response.id).users.push(response.user)
+        if (response.action == "join")
+            response.id == user.chats[selectedChat]?._id ? user.chats[selectedChat].users.push(response.user) : user.chats.find(chat => chat._id == response.id).users.push(response.user)
+        else {
+            if (response.id == user.chats[selectedChat]?._id) {
+                user.chats[selectedChat].users.splice(user.chats[selectedChat].users.findIndex(user => user.uid == response.userUID), 1)
+            } else {
+                const chat = user.chats.find(chat => chat._id == response.id)
+                chat.users.splice(chat.users.findIndex(user => user.uid == response.userUID), 1)
+            }
+        }  
     })
 
     socket.on("message", response => {
@@ -261,26 +268,29 @@ socket.on("connect", () => {
 
     socket.on("error", response => {
         if (response.error == "Invalid authentication") window.location.href = "/"
-        ShowInfoCard(response.error)
+        ShowInfoCard(response.error || "Unknow error")
     })
 
     socket.on("chat", response => {
         switch (response.action) {
             case "create":
             case "join":
-                user.chats.push(response.chat) 
-                RenderChats(false, false, response.chat)
+                document.getElementById("pseudochat")?.remove()
+                AddChat(response.chat, false, true)
                 break;
     
             case "leave":
             case "delete":
-                user.chats.splice(selectedChat, 1)
                 document.getElementById(response.id).remove()
-                messageView.innerHTML = ''
-                messageView.style.display = "none"
-                document.getElementById("messageInput").style.display = "none"
-                chatInfo.classList.add("hidden")
-                document.getElementById("messages-placeholder").classList.remove("hidden")
+                if (user.chats[selectedChat]?._id == response.id) {
+                    selectedChat = null
+                    messageView.innerHTML = ''
+                    messageView.style.display = "none"
+                    document.getElementById("messageInput").style.display = "none"
+                    chatInfo.classList.add("hidden")
+                    document.getElementById("messages-placeholder").classList.remove("hidden")
+                }
+                user.chats.splice(user.chats[selectedChat]?._id == response.id ? selectedChat : user.chats.findIndex(chat => chat._id == response.id), 1)
                 break;
     
             case "rename":
@@ -312,6 +322,7 @@ function ToggleGroupImageDisplay(imageSrc) {
     groupImageDisplay.src = imageSrc || "./assets/default.webp"
     groupImageDisplay.style.border = imageSrc ? "2px solid var(--second-color-theme)" : ''
     imageSrc ? groupFileInp.setAttribute("file", imageSrc) : groupFileInp.removeAttribute("file")
+    if (!imageSrc) groupFileInp.files = null
 }
 
 async function SendMessageHandle() {
@@ -357,10 +368,18 @@ async function UploadFile(url, type, oldUrl = undefined) {
     return (await response.json()).filePath
 }
 
+function AddChat(chat, rClear, rPrepend) {
+    user.chats.push(chat) 
+    RenderChats(rClear, rPrepend, chat)
+}
+
 function RenderMessages(clear, prepend, scroll, ...messages) {
-    RenderElements(messageView.id, message => `
-    ${message.from.uid != user.uid ? 
-        `<p class="message-header">${message.from.name}-${message.from.uid}</p>` : '' }
+    RenderElements(messageView.id, message => 
+    message.from.uid == "SYSTEM" ?
+    `<div class="message-content" style="text-align: center; margin: 0">${message.content}</div>`
+    :
+    `${message.from.uid != user.uid ? 
+        `<p class="message-header" ${!user.chats[selectedChat].owner && 'style="display: none"'}>${message.from.name}@${message.from.uid}</p>` : '' }
         <div class="message-content">
             ${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.type.match(/png|jpeg|jpg|webp/g) ? `<img src="./api/upload/${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="./api/upload/${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}
         </div>
@@ -376,10 +395,10 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                     e.target.previousSibling.children[1].innerHTML = parseMessageContent(message.content.description, false)
                 return e.target.remove()
             } 
-            const userMessage = e.target.closest(".user")
             const menu = document.getElementById("messageConfigs-view")
             menu.style.left = e.pageX - (e.pageX + (innerWidth * 0.05) > innerWidth ? (innerWidth * 0.04) : 0) + "px"
             menu.style.top = e.pageY - (e.pageY + (innerHeight * 0.05) > innerHeight ? (innerHeight * 0.04) : 0) + "px"
+            menu.children[0].style.display = menu.children[1].style.display = message.from.uid == user.uid ? "block" : "none"
             menu.children[2].style.display = message.content.url ? "block" : "none"
             menu.onclick = _e => {
                 if (_e.target.id == "delete")
@@ -393,13 +412,13 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
                 }
                 if (_e.target.id == "download" && message.content?.url) {
                     const dLink = document.createElement("a")
-                    dLink.href = message.content.url
+                    dLink.href = `./api/upload/${message.content.url}`
                     dLink.setAttribute("download",  message.content.name)
                     dLink.click()
                 }
             }
-            !userMessage?.getAttribute("viewID") && userMessage.setAttribute("viewID", "messageConfigs")
-        }, message => ["message", message.from.uid == user.uid  ? "user" : null], ...messages)
+            !e.target.parentElement?.getAttribute("viewID") && e.target.parentElement.setAttribute("viewID", "messageConfigs")
+        }, message => ["message", message.from.uid == "SYSTEM" && "system", message.from.uid == user.uid  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
 
@@ -414,8 +433,20 @@ function RenderChats(clear, prepend, ...chats) {
             <svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
         clear, prepend, 
         async (chat, e) => {
-            if (selectedChat == null || (user.chats[selectedChat]._id != chat._id)) {
-                if (selectedChat != null) 
+            if (e.target.tagName == "svg" || e.target.tagName == "path") {
+                const menu = document.getElementById("groupConfigs-view")
+                menu.children[0].id = chat.owner == user.uid ? "delete" : "leave"
+                menu.children[0].innerText = chat.owner == user.uid ? "Delete" : "Leave"
+                menu.children[1].style.display = chat.owner == user.uid ? "block" : "none"
+                menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
+                menu.style.left = e.pageX + "px"
+                menu.onclick = e => {
+                    if (e.target.id == "delete" || e.target.id == "leave")
+                        return socket.emit(chat.owner ? "group" : "dm", { id: chat._id, action: e.target.id })
+                    document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).showModal()
+                }
+            } else if (!user.chats[selectedChat] || (user.chats[selectedChat]._id != chat._id)) {
+                if (user.chats[selectedChat]) 
                     document.getElementById(user.chats[selectedChat]._id).style.backgroundColor = "var(--third-color-theme)"
                 selectedChat = user.chats.findIndex(_chat => _chat._id == chat._id)
                 document.getElementById(chat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
@@ -434,19 +465,6 @@ function RenderChats(clear, prepend, ...chats) {
                 ToggleNotification(user.chats[selectedChat])
                 RenderMessages(true, false, true, ...user.chats[selectedChat].messages)
             }
-            if (e.target.tagName == "svg" || e.target.tagName == "path") {
-                const menu = document.getElementById("groupConfigs-view")
-                menu.children[0].id = chat.owner == user.uid ? "delete" : "leave"
-                menu.children[0].innerText = chat.owner == user.uid ? "Delete" : "Leave"
-                menu.children[1].style.display = chat.owner == user.uid ? "block" : "none"
-                menu.style.top = e.pageY - (e.pageY >= window.innerHeight - 70 ? 70 : 0) + "px"
-                menu.style.left = e.pageX + "px"
-                menu.onclick = e => {
-                    if (e.target.id == "delete" || e.target.id == "leave") selectedChat = null
-                    if (e.target.id != "edit") return socket.emit(chat.owner ? "group" : "dm", { id: chat._id, action: e.target.id })
-                    document.getElementById(`${e.target.id || e.target.parentElement.id}-modal`).showModal()
-                }
-            }
         }, () => ["chat", "flex-set", "data-element"], _chat)
     })
 }
@@ -456,9 +474,9 @@ function RenderInvites(clear, ...invites) {
     document.getElementById("invites-modal").innerHTML = `<h2 style="margin: 10px;">Loading invites...</h2>`
     invites.forEach(async invite => {
         const fromUser = (await (await fetch(`/api/user/find/${invite.from}`)).json()).user
-        const toGroup = (await (await fetch(`/api/chat/find/${invite.group._id}?inviteToken=${invite.group.token}`)).json()).group
-        RenderElements("invites-modal", () => `<span>${fromUser.name}@${fromUser.uid}</span><span>${toGroup.name}</span><button method="accept">Join</button><button method="neglect">Delete</button><div class="hidden"><p>${toGroup.description}</p></div>`, clear, false, (_, e) => {
-            e.target.tagName == "BUTTON" && socket.emit("invite", { id: e.target.parentElement.id, group: invite.group, action: "handle", method: e.target.getAttribute("method") }) && ShowInfoCard("Group joined", 2000, "rgb(0, 255, 0)")
+        const toGroup = (await (await fetch(`/api/chat/find/${invite.group._id}`)).json()).group
+        RenderElements("invites-modal", () => `<span style="font-size: 2pc; height: 6.5vh;" id="expand">+</span><span>${fromUser.name}@${fromUser.uid}</span><span>${toGroup.name}</span><button method="accept">Join</button><button method="neglect">Delete</button><div class="hidden"><p>${toGroup.description}</p></div>`, clear, false, (_, e) => {
+            e.target.tagName == "BUTTON" && socket.emit("invite", { id: e.target.parentElement.id, group: invite.group, action: "handle", method: e.target.getAttribute("method") }) && (e.target.getAttribute("method") == "accept" && ShowInfoCard("Group joined", 2000, "rgb(0, 255, 0)"))
         }, () => ["invite"], invite)
     })
 }

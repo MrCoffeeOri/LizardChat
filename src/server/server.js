@@ -1,6 +1,7 @@
 import express, { json } from 'express'
 import cors from 'cors'
 import { rm, mkdir } from 'fs/promises'
+import crypto from "crypto"
 import { existsSync } from 'fs'
 import { config } from 'dotenv'
 import { Server } from 'socket.io'
@@ -30,8 +31,9 @@ app.use("/api/query", queryRouter)
 app.use("/api/upload", uploadRouter)
 app.use(express.static('./src/public'))
 io.on('connection', async socket => {
-    const checkError = (document, message) => (!document || document?.errors?.message) && socket.emit('error', { error: message || document?.errors?.message})
     const user = await User.FindByUID(socket.handshake.auth.userID)
+    const createSystemMessage = (content) => ({ from: { name: "System", uid: "SYSTEM" }, views: [], contentType: "text", id: crypto.getRandomValues(new Int16Array(10))[0], content: content, date: new Date() })
+    const checkError = (document, message) => (!document || document?.errors?.message) && socket.emit('error', { error: message || document?.errors?.message})
     if (!user || user.authToken != socket.handshake.auth.token)
         return socket.emit('error', { error: "Invalid authentication" })
     
@@ -66,7 +68,9 @@ io.on('connection', async socket => {
                 break;
 
             case "leave":
-                if (checkError(await Dm.findOneAndDelete({ _id: data.id, users: user.uid }))) return
+                const dmToDelete = await Dm.findOneAndDelete({ _id: data.id, users: user.uid })
+                if (checkError(dmToDelete)) return
+                dmToDelete.messages.forEach(async message => message.contentType == "file" && await rm(uploadPath + message.content.url))
                 user.chats = user.chats.filter(chat => chat._id != data.id)
                 break;
                     
@@ -80,6 +84,7 @@ io.on('connection', async socket => {
     })
 
     socket.on('group', async data => {
+        const systemMessage = createSystemMessage(`${user.name + '@' + user.uid} has ${data.action == "join" ? "joined" : data.action == "leave" ? "left" : data.action + "d"} the group`)
         switch (data.action) {
             case "create":
                 const newGroup = new Group({ name: data.name, description: data.description, image: data.image, owner: user.uid, users: [{ uid: user.uid, isOwner: true, isBlocked: false }] })
@@ -103,19 +108,22 @@ io.on('connection', async socket => {
                 return io.to(data.id).emit("chat", { id: data.id, name: data.name, action: data.action })
 
             case "join":
-                const groupToJoin = await Group.findOneAndUpdate({ _id: data.id, inviteToken: data.token, $not: { users: user.uid } }, { users: { $push: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } })
+                const groupToJoin = await Group.findOneAndUpdate({ _id: data.id, inviteToken: data.token, $not: { users: user.uid } }, { $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false }, messages: systemMessage } })
                 if (checkError(groupToJoin)) return
                 const objGroup = groupToJoin.toObject()
                 user.groups.push(objGroup)
                 socket.emit("chat", { chat: objGroup, action: data.action })
-                io.to(data.id).emit('userInChat', { userUID: user.uid, id: data.id })
-                return await socket.join(data.id)
-
+                await socket.join(data.id)
+                io.to(data.id).emit("message", { message: systemMessage, chatID: data.id, action: "send" })
+                return io.to(data.id).emit('userInChat', { userUID: user.uid, id: data.id, action: data.action })
+                
             case "leave":
-                if (checkError(await Group.findByIdAndUpdate(data.id, { $pull: { users: { uid: user.uid } } }))) return
+                if (checkError(await Group.findByIdAndUpdate(data.id, { $pull: { users: { uid: user.uid } }, $push: { messages: systemMessage } }))) return
                 user.chats = user.chats.filter(chat => chat._id != data.id)
-                io.to(data.id).emit('userInChat', { userUID: user.uid, id: data.id })
-                return await socket.leave(data.id)
+                socket.emit("chat", { action: "leave", id: data.id })
+                await socket.leave(data.id)
+                io.to(data.id).emit("message", { message: systemMessage, chatID: data.id, action: "send" })
+                return io.to(data.id).emit('userInChat', { userUID: user.uid, id: data.id, action: data.action })
         }
     })
 
@@ -158,9 +166,12 @@ io.on('connection', async socket => {
                 let group = null
                 if (checkError(handleInvite)) return
                 if (data.method == "accept") {
-                    group = await Group.findOneAndUpdate({ _id: handleInvite.group.id, inviteToken: handleInvite.group.token }, { $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false } } }, { returnDocument: "after", projection: { messages: 0 } })
-                    io.to(group._id.toString()).emit('userInChat', { user: { ...user, password: undefined, email: undefined }, id: group._id.toString() })
-                    await socket.join(group._id.toString())
+                    const systemMessage = createSystemMessage(`${user.name + '@' + user.uid} has joined the group`)
+                    group = await Group.findOneAndUpdate({ _id: handleInvite.group.id, inviteToken: handleInvite.group.token }, { $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false }, messages: systemMessage } }, { returnDocument: "after" })
+                    const chatID = group._id.toString()
+                    io.to(chatID).emit('userInChat', { user: { ...user, password: undefined, email: undefined }, id: chatID, action: "join" })
+                    io.to(chatID).emit("message", { message: systemMessage, chatID: chatID, action: "send" })
+                    await socket.join(chatID)
                 }
                 user.invites = user.invites.filter(_invite => _invite._id == handleInvite._id)
                 return socket.emit("invite", { action: "handled", inviteID: data._id, chat: group?.toObject() })

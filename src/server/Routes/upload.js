@@ -7,7 +7,7 @@ let tmpFiles = {}
 export default Router()
     .post("/", async (req, res) => {
         if (req.body.length == tmpFiles[req.query.userUID]?.length) {
-            const filePath = `${req.query.userUID}@${crypto.randomUUID()}${req.body.fileType}`
+            const filePath = req.query.userUID + '@' + crypto.randomUUID() + req.body.fileType
             req.body.oldUrl && await rm(uploadPath + req.body.oldUrl)
             await writeFile(uploadPath + filePath, Buffer.from(tmpFiles[req.query.userUID].split(',')[1], 'base64'))
             delete tmpFiles[req.query.userUID]

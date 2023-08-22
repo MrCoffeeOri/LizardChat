@@ -36,9 +36,9 @@ async function MessageValidation(req, res, next) {
 }
 
 async function ChatValidation(req, res, next) {
-    const pipeline = [
-        { $match: { _id: Types.ObjectId(req.params.id), ...(req.query.isDM ? { "users": req.query.userUID } : { "users.uid": req.query.userUID }) } },
-        {
+    const pipeline = [ { $match: { _id: Types.ObjectId(req.params.id), ...(req.query.isDM ? { "users": req.query.userUID } : { "users.uid": req.query.userUID }) } } ]
+    if (!req.path.match("messages")) {
+        pipeline.push({
             $lookup: {
                 from: "users",
                 localField: req.query.isDM ? "users" : "users.uid",
@@ -47,9 +47,9 @@ async function ChatValidation(req, res, next) {
                 as: "users",
                 pipeline: [ { $unset: ["email", "password", "authToken", "isPrivate", "otherInstance"] } ]  
             }
-        }
-    ]
-    !req.query.isDM && pipeline[1].$lookup.pipeline.push({ $replaceRoot: { newRoot: { $mergeObjects: [{ $arrayElemAt: [ "$$users", { $indexOfArray: [ "$$users", "$$ROOT.uid" ] } ] }, "$$ROOT" ] } } })
+        })
+        !req.query.isDM && pipeline[1].$lookup.pipeline.push({ $replaceRoot: { newRoot: { $mergeObjects: [{ $arrayElemAt: [ "$$users", { $indexOfArray: [ "$$users", "$$ROOT.uid" ] } ] }, "$$ROOT" ] } } })
+    }
     req.chat = (req.query.isDM ? await Dm.aggregate(pipeline) : await Group.aggregate(pipeline))[0]
     return !req.chat ? res.status(404).json({ message: "Chat not found" }) : next()
 }
