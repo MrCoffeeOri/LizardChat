@@ -12,7 +12,7 @@
 		"start": "node ./src/server/server.js"
 	},
 	"license": "MIT",
-	"homepage": "https://github.com/moniq-e/NodeChat#readme",
+	"homepage": "https://github.com/MrCoffeeOri/LizardChat",
 	"type": "module",
 	"engines": {
 		"node": "^17.x",
@@ -32,10 +32,10 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/moniq-e/NodeChat.git"
+		"url": "git+https://github.com/MrCoffeeOri/Lizardchat.git"
 	},
 	"bugs": {
-		"url": "https://github.com/moniq-e/NodeChat/issues"
+		"url": "https://github.com/MrCoffeeOri/Lizardchat/issues"
 	},
 	"keywords": [
 		"Node",
