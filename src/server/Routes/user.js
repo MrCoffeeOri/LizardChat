@@ -1,18 +1,10 @@
 import crypto from "crypto"
 import { Router } from "express";
-import { createTransport } from "nodemailer";
 import { ConfirmationToken } from "../models/cfmToken.model.js";
 import { Group } from "../models/group.model.js";
 import { User } from "../models/user.model.js";
-import { LengthUUID } from "../helpers/UUID.js"
-
-const tranport = createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: false,
-    auth: { user: process.env.EMAIL_USER, pass: process.env.PASSWORD_USER },
-    tls: { rejectUnauthorized: false }
-})
+import { LengthUUID } from "../helpers/UUID.js";
+import { transporter } from "../helpers/transporter.js";
 
 export default Router()
     .post("/create", async (req, res) => {
@@ -22,15 +14,15 @@ export default Router()
         if (!req.body.password.match(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/g))
             return res.status(400).json({ error: "Minimum eight characters, at least one letter, one number and no symbols" })
         
-        if (await User.exists({ $or: [{ email: req.body.email }, { name: req.body.name }] }))
+        if (await User.exists({ email: req.body.email }))
             return res.status(403).json({ error: "Email or name already used" })
 
         if (await ConfirmationToken.exists({ email: req.body.email }))
             return res.status(403).json({ error: "Token already sent to " + req.body.email })
             
         const cfmToken = new ConfirmationToken({ email: req.body.email, password: req.body.password, name: req.body.name })
-        tranport.sendMail({
-            from: process.env.EMAIL_USER,
+        transporter.sendMail({
+            from: "lizardchat@gmail.com",
             to: req.body.email,
             subject: "Confirmation email",
             date: new Date(),
@@ -66,7 +58,7 @@ export default Router()
     })
     .get("/confirm", async (req, res) => {
         const cfmToken = await ConfirmationToken.findOneAndDelete({ token: req.query.token })
-        if (!cfmToken)
+        if (!cfmToken?.name || !cfmToken)
             return res.status(401).json({ error: "Invalid confirmation token" })
 
         const user = new User({ name: cfmToken.name, email: cfmToken.email, password: cfmToken.password, uid: LengthUUID((await User.count()) + 1), authToken: crypto.randomUUID() })

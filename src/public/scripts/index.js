@@ -11,8 +11,7 @@ form.addEventListener("submit", e => {
     const name = document.getElementById("nickNamelInp")?.value
     const email = document.getElementById("emailInp").value
     const password = document.getElementById("passwordInp").value
-    const rPassword = document.getElementById("repeatPasswordInp")?.value
-    if (showLogin && (name == ' ' || rPassword != password))
+    if (showLogin && (name == ' ' || document.getElementById("repeatPasswordInp")?.value != password))
         return ShowInfoMessage("Invalid nickname or password", "red")
 
     showLogin ? 
@@ -57,6 +56,11 @@ document.getElementById("modal").children[2].addEventListener("click", e => {
         <div>
             <label for="nickNamelInp">Nickname</label>
             <input placeholder=" " required type="text" id="nickNamelInp">
+        </div>
+        <div>
+            <label for="nickNamelInp">Image</label>
+            <img src />
+            <input required accept="image/png,image/jpeg,image/webp" type="file" id="">
         </div>
         <button>Create account</button>
     `
