@@ -15,6 +15,7 @@ const chatInfo = document.getElementById("chat-info")
 const groupImageDisplay = document.getElementById("groupImageDisplay")
 const inviteNotification = document.getElementById("invites-notification")
 const fileSC = document.getElementById("file-showcase")
+const chatMoreInfo = document.getElementById("chat-moreInfo")
 const loadingInterval = setInterval(() => loadingIntro.children[2].innerHTML = loadingIntro.children[2].innerHTML.includes('...') ? "Connecting." : loadingIntro.children[2].innerHTML + ".", 950)
 const parseMessageContent = (content, limit = true) => (content.length > 200 && limit ? content.slice(0, 200) + '...' : content)
     .replaceAll(/<|>/g, char => char == '<' ? "&lt;" : "&gt;")
@@ -44,6 +45,7 @@ fileSelec.addEventListener('click', () => !fileSC.hasAttribute("file") && messag
 fileSC.children[3].addEventListener("click", () => messageFileInp.click())
 groupImageDisplay.addEventListener("click", () => groupFileInp.click())
 chatInfo.children[1].children[1].addEventListener("mouseleave", e => e.target.innerText = "See more information")
+chatMoreInfo.lastElementChild.addEventListener("click", () => chatMoreInfo.style.display = "none")
 
 chatInfo.children[1].children[1].addEventListener("mouseenter", e => {
     if (user.chats[selectedChat].owner) {
@@ -51,6 +53,19 @@ chatInfo.children[1].children[1].addEventListener("mouseenter", e => {
         e.target.innerText = usersParsed ? usersParsed.slice(0, 50) + (usersParsed.length > 50 ? '...' : '') : ""
     }
 })
+
+chatInfo.children[1].children[1].addEventListener("click", () => {
+    chatMoreInfo.style.display = "flex"
+    chatMoreInfo.children[0].src = "./api/upload/" + user.chats[selectedChat].image
+    chatMoreInfo.children[1].innerText = user.chats[selectedChat].name
+    chatMoreInfo.children[2].innerText = user.chats[selectedChat].users.length + " participant" + (user.chats[selectedChat].users.length > 1 ? "s" : "")
+    chatMoreInfo.children[3].innerHTML = parseMessageContent(user.chats[selectedChat].description, false).replaceAll("\n", () => "<br/>")
+    RenderElements("users-showcase", user => `
+        <img src="${user.image}"/>
+        <h3>${user.name}@${user.uid}</h3>
+    `, true, false, null, () => ["user-inchat", "flex-set"], ...user.chats[selectedChat].users)
+})
+
 
 fileSC.children[0].addEventListener("click", () => {
     ToggleFile()
@@ -94,14 +109,16 @@ document.getElementById("invites").addEventListener('click', e => {
 })
 
 searchInput.addEventListener('input', e => {
-    if (e.target.value.length <= 0) RenderChats(true, false, ...user.chats)
+    if (user.chats.length == 0) 
+        document.getElementById("data-view").innerHTML = ''
+    else if (e.target.value.length <= 0) 
+        RenderChats(true, false, ...user.chats)
     searchInputBack.style.display = e.target.value.length > 0 ? "block" : "none"
 })
 
 searchInputBack.addEventListener('click', () => {
     searchInput.value = ""
     searchInput.dispatchEvent(new Event("input"))
-    RenderChats(true, false, ...user.chats)
 })
 
 searchInput.addEventListener('keydown', async e => {
@@ -128,7 +145,6 @@ searchInput.addEventListener('keydown', async e => {
                 searchInputBack.dispatchEvent(new Event("click"))
                 socket.emit(queryData.owner ? "group" : "dm", queryData.owner ? { action: "join", token: queryData.inviteToken, uid: queryData.uid } : { action: "create", userUID: queryData.uid })
                 closeView()
-                searchInput.value = ''
             }
         }, () => ["data-element"], ...query)
     } else if (e.key == "Enter") ShowInfoCard("Enter a search query")
@@ -388,11 +404,11 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
     clear, prepend, 
         (message, e) => {
             if (e.target.classList.contains("extend-message")) {
-                const message = user.chats[selectedChat].messages.find(_message => _message.id == e.path[1].id)
+                const message = user.chats[selectedChat].messages.find(_message => _message.id == e.target.parentElement.id)
                 if (message.contentType == "text")
-                    e.target.previousSibling.innerHTML = parseMessageContent(message.content, false)
+                    e.target.previousElementSibling.innerHTML = parseMessageContent(message.content, false)
                 else
-                    e.target.previousSibling.children[1].innerHTML = parseMessageContent(message.content.description, false)
+                    e.target.previousElementSibling.children[1].innerHTML = parseMessageContent(message.content.description, false)
                 return e.target.remove()
             } 
             const menu = document.getElementById("messageConfigs-view")

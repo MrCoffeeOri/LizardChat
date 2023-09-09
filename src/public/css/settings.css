@@ -48,7 +48,10 @@ input, textarea {
     transition: 250ms;
 }
 
-a { text-decoration: none; }
+a { 
+    text-decoration: none; 
+    color: #3d3f81;
+}
 
 ul {
     padding: 0;

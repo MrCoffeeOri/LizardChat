@@ -22,7 +22,7 @@ export default Router()
             
         const cfmToken = new ConfirmationToken({ email: req.body.email, password: req.body.password, name: req.body.name })
         transporter.sendMail({
-            from: "lizardchat@gmail.com",
+            from: process.env.EMAIL_USER,
             to: req.body.email,
             subject: "Confirmation email",
             date: new Date(),
