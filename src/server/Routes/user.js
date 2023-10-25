@@ -1,10 +1,8 @@
 import crypto from "crypto"
 import { Router } from "express";
-import { ConfirmationToken } from "../models/cfmToken.model.js";
 import { Group } from "../models/group.model.js";
 import { User } from "../models/user.model.js";
 import { LengthUUID } from "../helpers/UUID.js";
-import { transporter } from "../helpers/transporter.js";
 
 export default Router()
     .post("/create", async (req, res) => {
@@ -15,26 +13,11 @@ export default Router()
             return res.status(400).json({ error: "Minimum eight characters, at least one letter, one number and no symbols" })
         
         if (await User.exists({ email: req.body.email }))
-            return res.status(403).json({ error: "Email or name already used" })
+            return res.status(403).json({ error: "Email already used" })
 
-        if (await ConfirmationToken.exists({ email: req.body.email }))
-            return res.status(403).json({ error: "Token already sent to " + req.body.email })
-            
-        const cfmToken = new ConfirmationToken({ email: req.body.email, password: req.body.password, name: req.body.name })
-        transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: req.body.email,
-            subject: "Confirmation email",
-            date: new Date(),
-            text: "If you did not request this, please ignore this email.\n\nConfirm your email by clicking the link below:\n\n" + `${req.protocol}://${req.headers.host}/api/user/confirm?token=${cfmToken.token}\n\nThis confirmation token will expire in 2 hours.`
-        }, async err => {
-            if (err)
-                return res.status(500).json({ error: err.message });
-            
-            setTimeout(async () => await cfmToken.delete(), 720000); // 2 hours
-            await cfmToken.save()
-            res.status(200).json({ message: "Confirmation email sent to " + req.body.email });
-        })
+        const user = new User({ name: req.body.name, password: req.body.password, email: req.body.email, image: req.body.image, isPrivate: false, uid: LengthUUID((await User.count()) + 1), authToken: crypto.randomUUID() })
+        res.status(200).json({ message: "Account created!", uid: user.uid, authToken: user.authToken})
+        await user.save()
     })
     .get("/login/:email/:password", async (req, res) => {
         const authToken = crypto.randomUUID()
@@ -42,7 +25,7 @@ export default Router()
         if (!user)
             return res.status(401).json({ message: "Invalid login" })
 
-        res.status(200).json({ message: "User was authenticated", userUID: user.uid, authToken })
+        res.status(200).json({ message: "User was authenticated", uid: user.uid, authToken })
     })
     .get("/find/:uid", async (req, res) => {
         const user = await User.findOne({ uid: req.params.uid })
@@ -55,14 +38,5 @@ export default Router()
             { $unset: "inviteToken" },
             { $unset: "messages" },
         ])}})
-    })
-    .get("/confirm", async (req, res) => {
-        const cfmToken = await ConfirmationToken.findOneAndDelete({ token: req.query.token })
-        if (!cfmToken?.name || !cfmToken)
-            return res.status(401).json({ error: "Invalid confirmation token" })
-
-        const user = new User({ name: cfmToken.name, email: cfmToken.email, password: cfmToken.password, uid: LengthUUID((await User.count()) + 1), authToken: crypto.randomUUID() })
-        await user.save()
-        res.status(200).redirect(`/home.html?authToken=${user.authToken}&userID=${user.id}&firstTime=true`)
     })
     //.patch("/edit", async (req, res) => {})

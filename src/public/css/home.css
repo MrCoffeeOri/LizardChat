@@ -232,7 +232,11 @@ h1, p { margin: 0; }
     padding: 6px 0;
     justify-content: space-evenly;
     border-bottom: 1px solid rgb(255, 255, 255, 0.2);
-    & img { width: 3vw; }
+    & img { 
+        border-radius: 50%;
+        width: 50px;
+        height: 50px; 
+    }
 }
 
 #options-view {
@@ -545,7 +549,12 @@ h1, p { margin: 0; }
         cursor: pointer;
         &:hover { color: var(--second-color-theme); };
     };
-    & img { display: block; };
+    & #users-showcase img { 
+        display: block; 
+        width: 50px;
+        height: 50px;
+        border-radius: 50%
+    };
     & h2 { margin-bottom: 3px; };
     & h3 {
         width: 100%;
@@ -560,7 +569,7 @@ h1, p { margin: 0; }
     & .user-inchat {
         cursor: pointer;
         transition: 400ms;
-        padding: 5px 0;
+        padding: 5px 0 5px 5px;
         justify-content: space-evenly;
         & img { width: 4vw; }
         &:hover { background-color: var(--third-lighten-color-theme); }

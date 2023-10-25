@@ -17,40 +17,51 @@ body {
     box-shadow: 3px 5px 5px rgb(128, 128, 128, 0.7);
 }
 
-#modal div { 
+div { 
     margin-top: 2.5vh; 
     transition: 250ms ease-in-out all;
 }
 
-#modal img { width: 5vw; }
+img { width: 80px; }
 
-#modal form { margin-bottom: 20px; }
+form { margin-bottom: 20px; }
 
-#modal button { margin: 22px auto 0 auto; }
+#imageDisplay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    & label { padding-bottom: 10px; }
+    & img { 
+        height: 80px;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+}
 
-#modal label { 
+button { margin: 22px auto 0 auto; }
+
+label { 
     float: left;
     margin-left: 5px;
 }
 
-#modal input {
+input {
     font-weight: bolder;
     width: 15vw;
     height: 2.5vh;
     padding: 10px;
 }
 
-#modal a {
+a {
     color: white;
     transition: 300ms;
+    &:hover {
+        text-decoration: underline;
+        color: wheat;
+    }
 }
 
-#modal a:hover {
-    text-decoration: underline;
-    color: wheat;
-}
-
-#modal #warningMessage {
+#warningMessage {
     animation: ShowInfoMessage 300ms;
     margin-top: 15px;
     margin-bottom: 0;

@@ -1,5 +1,6 @@
 import express, { json } from 'express'
 import cors from 'cors'
+import { config } from 'dotenv'
 import { rm, mkdir } from 'fs/promises'
 import crypto from "crypto"
 import { existsSync } from 'fs'
@@ -20,6 +21,7 @@ const app = express()
 const server = createServer(app)
 const io = new Server(server)
 
+config()
 !existsSync(uploadPath) && await mkdir(uploadPath)
 app.use(json())
 app.use(cors())

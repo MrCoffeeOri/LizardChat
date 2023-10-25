@@ -1,7 +1,8 @@
 import { io } from "https://cdn.socket.io/4.4.1/socket.io.esm.min.js";
 
-const authToken = new URLSearchParams(window.location.search).get('authToken')
-const socket = io(window.location.host, { auth: { token: authToken, userID: new URLSearchParams(window.location.search).get('userID') } })
+const searchParams = new URLSearchParams(window.location.search)
+const authToken = searchParams.get('authToken')
+const socket = io(window.location.host, { auth: { token: authToken, userID: searchParams.get('userID') } })
 const notificationAudio = new Audio("../assets/notificationSound.mp3")
 const messageView = document.getElementById("messages-view")
 const messageInp = document.querySelector(`#messageInput > input[type="text"]`)
@@ -24,7 +25,7 @@ const parseMessageContent = (content, limit = true) => (content.length > 200 && 
 const parseChatMessageDisplay = message => `${(message.content.name || message.content).slice(0, 10) + ((message.content.name || message.content).length > 10 ? '...' : '')} ${new Date(message.date).toLocaleTimeString()}`
 let selectedChat = null, user = null
 
-if (new URLSearchParams(window.location.search).get('firstTime')) {
+if (searchParams.get('firstTime')) {
     const toggleWelcome = () => {
         document.getElementById("intro-modal").classList.toggle("hidden")
         document.getElementById("background").classList.toggle("hidden")
@@ -61,7 +62,7 @@ chatInfo.children[1].children[1].addEventListener("click", () => {
     chatMoreInfo.children[2].innerText = user.chats[selectedChat].users.length + " participant" + (user.chats[selectedChat].users.length > 1 ? "s" : "")
     chatMoreInfo.children[3].innerHTML = parseMessageContent(user.chats[selectedChat].description, false).replaceAll("\n", () => "<br/>")
     RenderElements("users-showcase", user => `
-        <img src="${user.image}"/>
+        <img src="./api/upload/${user.image}"/>
         <h3>${user.name}@${user.uid}</h3>
     `, true, false, null, () => ["user-inchat", "flex-set"], ...user.chats[selectedChat].users)
 })
@@ -202,7 +203,7 @@ socket.on("connect", () => {
                 RenderChats(false, false, chat)
                 ToggleNotification(chat)
             })
-            info.children[0].src = user.image
+            info.children[0].src =  `./api/upload/${user.image}`
             info.children[1].innerText = `${user.name}@${user.uid}`
             clearInterval(loadingInterval)
             loadingIntro.remove()
@@ -372,7 +373,7 @@ async function UploadFile(url, type, oldUrl = undefined) {
     const totalChunks = Math.ceil(url.length / chunkSize)
     let response;
     for (let currentChunk = 0; currentChunk <= totalChunks; currentChunk++) {
-        response = await fetch(`/api/upload?userUID=${user.uid}`, {
+        response = await fetch(`/api/upload/chunk?userUID=${user.uid}`, {
             method: "POST",
             headers: { 
                 'Content-Type': 'application/json',
@@ -442,7 +443,7 @@ function RenderChats(clear, prepend, ...chats) {
     chats.forEach(_chat => {
         const otherUser = !_chat.owner && _chat.users.find(_user => _user.uid != user.uid)
         RenderElements("data-view", chat => 
-            `<img src="${chat.image ? "./api/upload/" + chat.image : otherUser.image}" alt="group image"/>
+            `<img src="./api/upload/${otherUser.image || chat.image}" alt="group image"/>
             <span style="display: inline">${chat.name || otherUser.name + '@' + otherUser.uid}</span>
             <span></span>
             <span>${chat.messages[chat.messages.length - 1] ? parseChatMessageDisplay(chat.messages[chat.messages.length - 1]) : ''}</span>
@@ -468,7 +469,7 @@ function RenderChats(clear, prepend, ...chats) {
                 document.getElementById(chat._id).style.backgroundColor = "var(--third-lighten-color-theme)"
                 const chatResponse = (user.chats[selectedChat]?.remainingMessages || typeof user.chats[selectedChat].remainingMessages == 'undefined') && (await (await fetch(`/api/chat/${chat._id}?messagesAmmount=12&userUID=${user.uid}&userAuthToken=${user.authToken}${!chat.owner && "&isDM=true" }`)).json()).chat
                 user.chats[selectedChat] = { ...user.chats[selectedChat], ...chatResponse, messages: chatResponse?.messages || user.chats[selectedChat].messages }
-                chatInfo.children[0].src = chat.image ? `./api/upload/${chat.image}` : otherUser.image
+                chatInfo.children[0].src = `./api/upload/${otherUser.image || chat.image}`
                 chatInfo.children[1].children[0].innerText = user.chats[selectedChat].name || otherUser.name
                 messageView.style.display = "flex"
                 document.getElementById("messageInput").style.display = "flex"
