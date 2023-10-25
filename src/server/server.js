@@ -1,4 +1,4 @@
-import express, { json } from 'express'
+import express, { json, urlencoded } from 'express'
 import cors from 'cors'
 import { config } from 'dotenv'
 import { rm, mkdir } from 'fs/promises'
@@ -23,7 +23,8 @@ const io = new Server(server)
 
 config()
 !existsSync(uploadPath) && await mkdir(uploadPath)
-app.use(json())
+app.use(urlencoded({ limit: '50mb' }));
+app.use(json({ limit: '50mb' }))
 app.use(cors())
 app.use("/api/chat", chatRouter)
 app.use("/api/user", userRouter)
