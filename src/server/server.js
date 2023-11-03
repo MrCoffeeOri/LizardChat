@@ -23,7 +23,6 @@ const io = new Server(server)
 
 config()
 !existsSync(uploadPath) && await mkdir(uploadPath)
-app.use(urlencoded({ limit: '50mb' }));
 app.use(json({ limit: '50mb' }))
 app.use(cors())
 app.use("/api/chat", chatRouter)
@@ -58,6 +57,7 @@ io.on('connection', async socket => {
         let dmObj = undefined
         switch (data.action) {
             case "create":
+                if (data.userUID == user.uid) return socket.emit('error', { error: "Invalid user for DM" })
                 const otherUser = await User.findOne({ uid: data.userUID }, { uid: 1, name: 1, image: 1 })
                 if (checkError(otherUser, "Invalid user") || checkError(!(await Dm.exists({ $or: [{ users: [user.uid, otherUser.uid] }, { users: [otherUser.uid, user.uid] }] })), "DM already created")) return
                 const otherUserSocket = (await io.sockets.in(data.userUID).fetchSockets())[0]
@@ -197,7 +197,7 @@ io.on('connection', async socket => {
             data.action == "view" ? { $push: { "messages.$[elem].views": user.uid } } : null
         const chat = data.chatType == "dm" ? await Dm.findOneAndUpdate({ ...filter,  block: null }, update, options) : await Group.findOneAndUpdate({ ...filter, "users.isBlocked": false }, update, options) 
         if (checkError(chat)) return
-        io.to(chat._id.toString()).emit("message", { message: update?.$push?.messages || { id: data.id, date: new Date(), content: data.content, contentType: data.contentType }, chatID: data.chatID, action: data.action })
+        io.to(chat._id.toString()).emit("message", { message: data.action == "send" ? update.$push.messages : { id: data.id, ...(data.action == "view" ? { userUID: user.uid } : { date: new Date(), content: data.content, contentType: data.contentType }) }, chatID: data.chatID, action: data.action })
     })
 
     /*socket.on('deleteUser', async () => {
