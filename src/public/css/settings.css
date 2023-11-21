@@ -11,6 +11,7 @@
     --third-lighten-color-theme: rgb(63, 63, 63);
     --login-input-active: rgb(124, 124, 124);
     --error-card-color: rgb(82, 2, 2);
+    --view-message-color: rgb(73, 73, 233);
 }
 
 * { 

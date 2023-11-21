@@ -36,7 +36,7 @@ aside svg, .message div.file svg, #messageInput svg {
     color: white;
 }
 
-aside svg:hover, div.file svg:hover, #messageInput svg:hover {
+aside svg:hover, div.file svg:hover, #messageInput svg:hover, .user-inchat svg:hover {
     cursor: pointer;
     color: var(--second-color-theme);
 }
@@ -133,7 +133,15 @@ h1, p { margin: 0; }
         word-break: break-all; 
         margin: 1% 0 0 0;
     };
-    & svg:last-child { width: 1vw; };
+    & .dot {
+        width: 8px;
+        height: 8px;
+        background-color: black;
+        margin: 0;
+        position: absolute;
+        top: 2px;
+        border-radius: 50%
+    };
     & span.extend-message {
         display: block;
         color: rgb(90, 90, 252);
@@ -556,10 +564,7 @@ h1, p { margin: 0; }
         border-radius: 50%
     };
     & h2 { margin-bottom: 3px; };
-    & h3 {
-        width: 100%;
-        padding: 0 10px;
-    }
+    & h3 { padding: 0 10px; };
     & > img {
         display: block;
         width: 6vw;
@@ -569,10 +574,20 @@ h1, p { margin: 0; }
     & .user-inchat {
         cursor: pointer;
         transition: 400ms;
-        padding: 5px 0 5px 5px;
-        justify-content: space-evenly;
-        & img { width: 4vw; }
-        &:hover { background-color: var(--third-lighten-color-theme); }
+        padding: 7px 30px;
+        justify-content: space-between;
+        & > div { 
+            align-items: inherit; 
+            & > * { margin: 0 5px; }
+        }
+        & .tag {
+            background-color: var(--second-darken-color-theme);
+            padding: 2px 4px;
+            border-radius: 0.4rem;
+        };
+        & img { width: 4vw; };
+        &:hover { background-color: var(--third-lighten-color-theme); };
+        &:hover svg { display: block; }
     }
     & hr {
         margin: 0;

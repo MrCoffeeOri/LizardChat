@@ -61,10 +61,23 @@ chatInfo.children[1].children[1].addEventListener("click", () => {
     chatMoreInfo.children[1].innerText = user.chats[selectedChat].name
     chatMoreInfo.children[2].innerText = user.chats[selectedChat].users.length + " participant" + (user.chats[selectedChat].users.length > 1 ? "s" : "")
     chatMoreInfo.children[3].innerHTML = parseMessageContent(user.chats[selectedChat].description, false).replaceAll("\n", () => "<br/>")
-    RenderElements("users-showcase", user => `
-        <img src="./api/upload/${user.image}"/>
-        <h3>${user.name}@${user.uid}</h3>
-    `, true, false, null, () => ["user-inchat", "flex-set"], ...user.chats[selectedChat].users)
+    RenderElements("users-showcase", chatUser => `
+        <div style="display: inherit">        
+            <img src="./api/upload/${chatUser.image}"/>
+            <h3>${chatUser.uid == user.uid ? "You" : chatUser.name + '@' + chatUser.uid}</h3>
+            ${user.chats[selectedChat].owner == chatUser.uid ? "<span class='tag'>owner</span>" : ""}
+        </div>
+        ${chatUser.uid != user.uid ? '<svg class="hidden" viewID="userInChat" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>' : ""}
+    `, true, false, (chatUser, e) => {
+        if (e.target.tagName == "svg" || e.target.tagName == "path") {
+            const menu = document.getElementById("userInChat-view")
+            menu.style.top = e.y + "px"
+            menu.style.left = e.x - 70 + "px"
+        } else if (chatUser.uid != user.uid) {
+            socket.emit("dm", { action: "create", userUID: user.uid })
+            chatMoreInfo.lastElementChild.click()
+        }
+    }, () => ["user-inchat", "flex-set"], ...user.chats[selectedChat].users)
 })
 
 
@@ -232,9 +245,9 @@ socket.on("connect", () => {
         if (response.action == "join")
             response.id == user.chats[selectedChat]?._id ? user.chats[selectedChat].users.push(response.user) : user.chats.find(chat => chat._id == response.id).users.push(response.user)
         else {
-            if (response.id == user.chats[selectedChat]?._id) {
+            if (response.id == user.chats[selectedChat]?._id)
                 user.chats[selectedChat].users.splice(user.chats[selectedChat].users.findIndex(user => user.uid == response.userUID), 1)
-            } else {
+            else {
                 const chat = user.chats.find(chat => chat._id == response.id)
                 chat.users.splice(chat.users.findIndex(user => user.uid == response.userUID), 1)
             }
@@ -251,13 +264,14 @@ socket.on("connect", () => {
                 document.getElementById(chat._id).children[3].innerText = parseChatMessageDisplay(response.message)
                 if (selectedChat == null || user.chats[selectedChat]._id != response.chatID) {
                     notificationAudio.play()
+                    if (!chat.newMessages) chat.newMessages = 0
                     chat.newMessages++
                     return ToggleNotification(chat, true)
                 }
                 if (response.message.from.uid != user.uid) {
                     socket.emit("message", { chatID: user.chats[selectedChat]._id, id: response.message.id, chatType: chat.owner ? "group" : "dm", action: "view" }) 
                     RenderMessages(false, false, true, response.message)
-                }
+                } else document.getElementById(response.message.id).lastElementChild.style.backgroundColor = "var(--view-message-color)"
                 break;
         
             case "edit":
@@ -277,7 +291,9 @@ socket.on("connect", () => {
                 break;
 
             case "view":
-                chat.messages[chat.messages.findIndex(message => message.id == response.message.id)].views = response.message.views
+                const messageIndex = chat.messages.findIndex(message => message.id == response.message.id)
+                chat.messages[messageIndex].views.push(response.message.userUID)
+                if (chat.messages[messageIndex].from.uid == user.uid) document.getElementById(response.message.id).lastElementChild.previousElementSibling.style.backgroundColor = "var(--view-message-color)"
                 break;
         }
         user.chats[selectedChat] = response.chatID == user.chats[selectedChat]?._id ? chat : user.chats[selectedChat]
@@ -395,13 +411,13 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
     message.from.uid == "SYSTEM" ?
     `<div class="message-content" style="text-align: center; margin: 0">${message.content}</div>`
     :
-    `${message.from.uid != user.uid ? 
-        `<p class="message-header" ${!user.chats[selectedChat].owner && 'style="display: none"'}>${message.from.name}@${message.from.uid}</p>` : '' }
-        <div class="message-content">
-            ${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.type.match(/png|jpeg|jpg|webp/g) ? `<img src="./api/upload/${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="./api/upload/${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}
-        </div>
-        ${message.content?.description?.length > 200 || message.content?.length > 200 ? `<span class="extend-message">See more ${message.content?.description?.length - 200 || message.content?.length - 200}</span>` : ''}
-        <p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>`, 
+    `${message.from.uid != user.uid ? `<p class="message-header" ${!user.chats[selectedChat].owner && 'style="display: none"'}>${message.from.name}@${message.from.uid}</p>` : '' }
+    <div class="message-content">
+        ${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.type.match(/png|jpeg|jpg|webp/g) ? `<img src="./api/upload/${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="./api/upload/${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}
+    </div>
+    ${message.content?.description?.length > 200 || message.content?.length > 200 ? `<span class="extend-message">See more ${message.content?.description?.length - 200 || message.content?.length - 200}</span>` : ''}
+    <p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>
+    ${message.from.uid == user.uid ? `</div><div class="dot" style="right: 12px;${message.views && (message.views.length > 1 || message.views.length == user.chats[selectedChat].users.length) && "background-color: var(--view-message-color)"}"></div><div class="dot" style="right: 2px;${message.views && "background-color: var(--view-message-color)"}">` : ''}`, 
     clear, prepend, 
         (message, e) => {
             if (e.target.classList.contains("extend-message")) {
@@ -438,7 +454,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
         }, message => ["message", message.from.uid == "SYSTEM" && "system", message.from.uid == user.uid  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
-// test
+
 function RenderChats(clear, prepend, ...chats) {
     chats.forEach(_chat => {
         const otherUser = !_chat.owner && _chat.users.find(_user => _user.uid != user.uid)
@@ -447,7 +463,7 @@ function RenderChats(clear, prepend, ...chats) {
             <span style="display: inline">${chat.name || otherUser.name + '@' + otherUser.uid}</span>
             <span></span>
             <span>${chat.messages[chat.messages.length - 1] ? parseChatMessageDisplay(chat.messages[chat.messages.length - 1]) : ''}</span>
-            <svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20" class=""><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
+            <svg class="hidden" viewID="groupConfigs" viewBox="0 0 19 20" width="19" height="20"><path fill="currentColor" d="m3.8 6.7 5.7 5.7 5.7-5.7 1.6 1.6-7.3 7.2-7.3-7.2 1.6-1.6z"></path></svg>`, 
         clear, prepend, 
         async (chat, e) => {
             if (e.target.tagName == "svg" || e.target.tagName == "path") {
