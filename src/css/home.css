@@ -1,0 +1,261 @@
+@import url(./setup.css);
+
+@keyframes Show {
+    0%{
+        z-index: -1;
+        top: -300%;
+        
+    }
+    99%{
+        top: 11.6%;
+        z-index: -1;
+    }
+
+    100%{
+        z-index: auto;
+    }
+}
+
+.change > div:nth-child(1) { transform: translate(0, 11px) rotate(-45deg); }
+
+.change > div:nth-child(2) { opacity: 0; }
+
+.change > div:nth-child(3) { transform: translate(0, -11px) rotate(45deg); }
+
+dialog { 
+    width: 60vw; 
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 10px 10px var(--nav-color);
+    border: 1px solid var(--nav-color);
+}
+
+dialog form > div { 
+    margin: 2% 0;
+    text-align: start !important; 
+}
+
+section h2 {
+    text-align: center;
+    font-size: 2.8pc;
+}
+
+form { padding: 0 3% 3% 3%; }
+
+#menu {
+    display: inline-block;
+    cursor: pointer;
+}
+
+#menu div {
+    padding: 1px 17px;
+    height: 5px;
+    background-color: white;
+    margin: 6px 0;
+    transition: 400ms;
+}
+
+#info {
+    width: 25vw;
+    background-color: var(--nav-color-darken);
+    padding-left: 1%;
+    border-radius: 4rem;
+    justify-content: space-around;
+}
+
+#info input {
+    border-radius: inherit;
+    width: -webkit-fill-available;
+    color: white;
+    border: none;
+    font-size: 1.2pc;
+    padding: 20px;
+}
+
+#menu-selection {
+    animation: Show 600ms ease-out;
+    width: max-content;
+    display: none;
+    position: absolute;
+    background-color: rgba(42, 42, 42, 0.882);
+    top: 82px;
+    z-index: 2;
+    left: -2.4%;
+    border-radius:  0 0 0.4rem 0.4rem;
+}
+
+#menu-selection h2 {
+    padding: 10% 1%;
+    margin: 0;
+    cursor: pointer;
+}
+
+#menu-selection h2:hover {
+    background-color: rgb(0, 0, 0);
+}
+
+.container {
+    display: flex;
+    align-items: center;
+}
+
+#perfil div {
+    text-align: center;
+    width: 100%;
+}
+
+#perfil img {
+    width: 210px;
+    height: 200px;
+    margin-top: 3%;
+    border-radius: 50%;
+    border: 2px solid black;
+}
+
+.mensagem {
+    background-color: var(--nav-color);
+    display: flex;
+    align-content: center;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0%;
+    margin: 2% 0;
+    border-radius: 10px;
+}
+
+.mensagem input[type="submit"] {
+    width: 6vw;
+    text-align: center;
+    font-size: 1.1em;
+    padding: 0;
+    
+}
+
+#deleta {
+    border: #9c0f0f 3px solid;
+    border-radius: 10px;
+    background-color: var(--form-background-color);
+}
+
+#atualiza {
+    border: #c29415 3px solid;
+    border-radius: 10px;
+    background-color: var(--form-background-color);
+}
+
+.mensagem p {
+    font-size: 1.2em;
+    color:#fff;
+}
+
+.mensagem textarea {
+    font-size: 1.1pc; 
+    border-radius: 10px;
+    width: 20vw;
+    min-height: 7vh;
+    background-color: var(--form-element-color-darken);
+}
+
+#comentArea {
+    width: 75%; 
+    display: inline;
+    background-color: var(--form-background-color);
+    margin: 0;
+}
+
+#addComent {
+    width: 24%;
+    margin: 0;
+    display: inline;
+    background-color: var(--form-background-color);
+    border: darkolivegreen 3px solid;
+
+}
+
+nav { 
+    justify-content: space-between;
+    text-align: center;
+    background-color: var(--nav-color); 
+    color: white;
+    z-index: 3;
+}
+
+nav > div { width: 88vw; }
+
+nav > img { width: 73px; }
+
+nav > h2 { width: 35vw; }
+
+nav > div > * { margin: 0 2.5%; }
+
+.slider-container {
+    width: 80%;
+    margin: 0 auto;
+    overflow: hidden;
+    position: relative;
+}
+
+.slider {
+    display: flex;
+    transition: all 0.5s ease;
+}
+
+.slide {
+    position: relative;
+    transition: 400ms;
+    text-align: center;
+    min-width: 100%;
+}
+
+.slide div h3 { font-size: xx-large; }
+
+.slide div p { width: 70%; }
+
+.slide .slide-content { 
+    margin: 0 auto;
+    cursor: pointer;
+    width: 60%;
+}
+
+.slide .slide-content img {
+    border: 1px solid rgb(237, 147, 64);
+    border-radius: .4rem;
+    width: 100%;
+    height: 50vh;
+    position: relative;
+}
+
+.slide .slide-content:hover .slide-subcontent { 
+    visibility: visible; 
+    height: 99%;
+    background-color: #000000de;
+    transition: 500ms;
+}
+
+.slide .slide-content .slide-subcontent {
+    visibility: hidden; 
+    padding: 0 5px;
+    top: 0;
+    width: 60%;
+    height: 0;
+    color: white;
+    position: absolute;
+    background-color: none;
+}
+
+button.controller {
+    top: 37%;
+    position: absolute;
+    font-size: 4pc;
+    background-color: rgba(255, 255, 255, 0);
+    color: #000000;
+    border: none;
+    font-weight: bolder;
+    margin: 0 10%;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+button.controller:hover { color: rgb(148, 148, 148); }
+
+button.controller:last-of-type { right: 0; }

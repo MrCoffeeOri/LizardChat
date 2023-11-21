@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="../css/integrantes.css">
+        <link rel="icon" type="image/png" href="../img/icons/icon-museu-pap.webp"/>
+        <title>Museu Paulo Agostinho Sobrinho - Integrantes</title>
+        <script type="module" defer>
+            import HighContrast from "../scripts/contrast.js"
+            const highContrast = new HighContrast("../img/")
+            if (window.localStorage.getItem("high")) {
+                highContrast.Toggle()
+                document.querySelector("a > img").src = "../img/icons/seta-return.webp"
+            }
+        </script>
+    </head>
+    <nav>
+        <a href="../index.php"> <img style="width: 48px;" src="../img/icons/seta-return-preta.png"></a>
+        <img src="../img/icons/icon-museu-pap.webp" alt="">
+    </nav>
+    </html>
+    <body>
+        <h2> Equipe produtora do site: </h2>
+        <div id="container-integrantes">
+            <div class="balao">
+                <img class="imgIntegrantes" src="../img/integrantes/integrante-Renan.webp" alt="Integrante 1">
+                <p>Renan Penha Marquette</p>
+                <p><a href="https://www.instagram.com/_renanpenha/"> <img style="width: 60px; height: 60px; border-radius: 15px;"src="../img/icons/instagram.png" > </a> </p>
+                <p><a href="https://github.com/MrCoffeeOri"> <img style="width: 60px; height: 60px; border-radius: 50%;"src="../img/icons/github-logo.png" > </a> </p>
+              
+            </div>   
+            <div class="balao">
+                 <img class="imgIntegrantes" src="../img/integrantes/integrante-Tiago.webp" alt="Integrante 3">
+                 <p>Tiago Paz</p>
+                 <p><a href="https://www.instagram.com/tiagoh_paz/"> <img style="width: 60px; height: 60px; border-radius: 15px;"src="../img/icons/instagram.png" > </a> </p>
+                 <p><a href="https://github.com/mrexpresso"> <img style="width: 60px; height: 60px; border-radius: 50%;"src="../img/icons/github-logo.png" > </a> </p>
+            </div>
+
+            <div class="balao">
+                <img class="imgIntegrantes" src="../img/integrantes/integrante-Vinicius.webp" alt="Integrante 2">
+                <p>Vinícius Daniel Quadros</p>
+                <p><a href="https://www.instagram.com/vvz0n_20/"> <img style="width: 60px; height: 60px; border-radius: 15px;"src="../img/icons/instagram.png" > </a> </p>
+                <p><a href="https://github.com/Mr-Moccacino"> <img style="width: 60px; height: 60px; border-radius: 50%;"src="../img/icons/github-logo.png" > </a> </p>
+            </div>
+
+            <div class="balao">
+                <img class="imgIntegrantes" src="../img/integrantes/integrante-Seixas.webp" alt="Integrante 2">
+                <p>Vinícius Ferreira Seixas</p>
+            </div>
+        </div>
+    <footer>
+        <p id="pFooter">Política de privacidade | © 2023. Todos os direitos reservados.</p>
+    </footer>
+    </body>
+</html>

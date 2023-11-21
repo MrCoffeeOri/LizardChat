@@ -1,0 +1,75 @@
+@import url(./setup.css);
+
+header {
+    padding: 2px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header img { width: 3.5vw; }
+
+main img { 
+    width: 30vw; 
+    border-radius: .4rem;
+}
+
+main section {
+    padding: 0 10px;
+}
+
+main section:first-child {
+    display: flex;
+    margin-top: 4vh;
+}
+
+main section:first-child div {
+    display: flex;
+    align-items: center;
+    line-height: 3.5pc;
+    margin-left: 2vw;
+    height: 35vh;
+    width: 70%;
+    background-color: #E1DBD0;
+    color: #4B2F1F;
+    font-size: 25px;
+    font-family: Inter;
+    font-weight: bolder;
+    border-radius: .4rem; 
+    border: 1px #4B2F1F solid;
+    
+}
+
+main section:first-child div p {
+    padding: 2vh 4vw;
+}
+
+main section:last-child {
+    margin-top: 6vh;
+    color: white;
+    font-size: 20px;
+    font-family: Inter;
+    margin: 0 0.7vw;
+    height: 35vh;
+    background: #4B2F1F; 
+    border-radius: .4rem
+}
+
+
+#back {
+    margin: 10px;
+    cursor: pointer;
+}
+
+#caracteristicas-obra, #descricao-obra h2{
+    padding:10px;
+}
+
+#descricao-obra {
+    margin-top: 4vh; 
+}
+
+#descricao-obra p {
+    text-align: justify;
+    margin: 1vh 2vh;
+}
