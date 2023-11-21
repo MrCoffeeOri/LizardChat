@@ -1,0 +1,1 @@
+document.getElementById("obra").src = new URLSearchParams(window.location.search).get('obraSource')
