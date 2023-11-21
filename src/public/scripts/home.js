@@ -455,7 +455,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
         }, message => ["message", message.from.uid == "SYSTEM" && "system", message.from.uid == user.uid  ? "user" : null], ...messages)
     if (scroll) messageView.scrollBy(0, messageView.scrollHeight)
 }
-
+// test
 function RenderChats(clear, prepend, ...chats) {
     chats.forEach(_chat => {
         const otherUser = !_chat.owner && _chat.users.find(_user => _user.uid != user.uid)
