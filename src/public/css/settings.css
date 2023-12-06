@@ -47,6 +47,7 @@ input, textarea {
     outline: none; 
     border: none;
     transition: 250ms;
+    resize: none;
 }
 
 a { 
