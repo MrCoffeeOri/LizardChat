@@ -137,7 +137,7 @@ searchInputBack.addEventListener('click', () => {
 
 searchInput.addEventListener('keydown', async e => {
     if (e.key == "Enter" && e.target.getAttribute("filter")) {
-        document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Loading query...</h3>`
+        document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Loading ${e.target.getAttribute("filter").toLowerCase()} query...</h3>`
         const query = (await (await fetch(`/api/query/${e.target.getAttribute("filter").toLowerCase()}/${e.target.value}/20`)).json())?.query?.filter(rd => rd.uid != user.uid && !user.chats.some(chat => chat.uid == rd.uid))
         if (!query || !query.length) 
             return document.getElementById("data-view").innerHTML = `<h3 style="text-align: center;">Query data not found</h3>`
@@ -300,7 +300,10 @@ socket.on("connect", () => {
     })
 
     socket.on("error", response => {
-        if (response.error == "Invalid authentication") window.location.href = "/"
+        if (response.error == "Invalid authentication") {
+            window.location.href = "/"
+            localStorage.clear()
+        }
         ShowInfoCard(response.error || "Unknow error")
     })
 
@@ -358,22 +361,31 @@ function ToggleGroupImageDisplay(imageSrc) {
     if (!imageSrc) groupFileInp.files = null
 }
 
+// TODO: Fix the message editing feature (can't change the file)
 async function SendMessageHandle() {
     if (!messageFileInp.hasAttribute("file") && (!messageInp.value || messageInp.value.match(/\&[^\s\&\;]+\;|^\s+$/g))) return
     const fileToSend = messageFileInp.hasAttribute("file") && JSON.parse(messageFileInp.getAttribute("file"))
-    if (fileToSend) fileToSend.url = await UploadFile(fileToSend.url, fileToSend.type, messageInp.getAttribute("messageToEditID"))
     const rawMessage = { 
         id: Number(messageInp.getAttribute("messageToEditID")) || crypto.getRandomValues(new Int16Array(10))[0], 
         contentType: messageFileInp.hasAttribute("file") ? "file" : "text", 
         content: fileToSend ? {...fileToSend, description: messageInp.value.trim() } : messageInp.value.trim(), 
         chatID: user.chats[selectedChat]._id, 
     }
-    socket.emit('message', { ...rawMessage, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send", chatType: user.chats[selectedChat].owner ? "group" : "dm" })
-    !messageInp.hasAttribute("messageToEditID") && RenderMessages(false, false, true, { ...rawMessage, from: { uid: user.uid }, date: new Date() })
-    messageInp.value = ""
-    messageInp.removeAttribute("messageToEditID")
-    messageFileInp.removeAttribute("file")
-    fileSC.children[0].dispatchEvent(new Event('click'))
+    const emitMessage = () => {
+        socket.emit('message', { ...rawMessage, action: messageInp.hasAttribute("messageToEditID") ? "edit" : "send", chatType: user.chats[selectedChat].owner ? "group" : "dm" })
+        !messageInp.hasAttribute("messageToEditID") && RenderMessages(false, false, true, { ...rawMessage, from: { uid: user.uid }, date: new Date() })
+        messageInp.value = ""
+        messageInp.removeAttribute("messageToEditID")
+        messageFileInp.removeAttribute("file")
+        fileSC.children[0].dispatchEvent(new Event('click'))
+    } 
+    if (fileToSend)
+        UploadFile(fileToSend.url, fileToSend.type, messageInp.getAttribute("messageToEditID")).then(url => {
+            rawMessage.content.url = url
+            emitMessage()
+        })
+    else
+        emitMessage()
 }
 
 function ToggleFile(file) {
@@ -413,7 +425,7 @@ function RenderMessages(clear, prepend, scroll, ...messages) {
     :
     `${message.from.uid != user.uid ? `<p class="message-header" ${!user.chats[selectedChat].owner && 'style="display: none"'}>${message.from.name}@${message.from.uid}</p>` : '' }
     <div class="message-content">
-        ${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.type.match(/png|jpeg|jpg|webp/g) ? `<img src="./api/upload/${message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="./api/upload/${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}
+        ${message.contentType == "text" ? parseMessageContent(message.content, true) : (message.contentType == "file" && message.content.type.match(/png|jpeg|jpg|webp/g) ? `<img src="${message.content.url.length >= 100 ? message.content.url : './api/upload/'+message.content.url}" alt="${message.content.name}"/>` : `<div class="file"><span>${message.content.name}</span> <a style="width: 2vw; height: 4vh;" download="${message.content.name}" href="./api/upload/${message.content.url}"><svg style="width: 100%" viewBox="0 0 24 24" class=""><path d="M19.473 12.2h-4.3V2.9c0-.5-.4-.9-.9-.9h-4.3c-.5 0-.9.4-.9.9v9.3h-4.3c-.8 0-1 .5-.5 1.1l6.8 7.3c.7.9 1.4.7 2.1 0l6.8-7.3c.5-.6.3-1.1-.5-1.1Z" fill="currentColor"></path></svg></a></div>`) + `<p style="margin-top: 1%;">${parseMessageContent(message.content.description)}</p>`}
     </div>
     ${message.content?.description?.length > 200 || message.content?.length > 200 ? `<span class="extend-message">See more ${message.content?.description?.length - 200 || message.content?.length - 200}</span>` : ''}
     <p class="message-time">${new Date(message.date).toLocaleDateString() == new Date().toLocaleDateString() ? `Today ${new Date(message.date).toLocaleTimeString()}` : new Date(message.date).toLocaleDateString()}</p>

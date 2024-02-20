@@ -17,7 +17,7 @@ export default Router()
         tmpFiles[req.query.userUID] += req.body.chunk.trim()
         res.status(201).json({ message: "Chunk recived" })
     })
-    .get("/:id", (req, res) => res.status(200).sendFile(`${process.cwd()}/src/server/uploads/${req.params.id}`))
+    .get("/:id", (req, res) => res.status(200).sendFile(uploadPath + req.params.id))
 
 async function SaveFile(file, fileType, oldUrl, userUID = Math.ceil(Math.random() * 100000)) {
     const filePath = userUID + '@' + crypto.randomUUID() + fileType

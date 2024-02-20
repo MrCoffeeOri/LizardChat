@@ -16,7 +16,7 @@ aside {
     color: white;
     width: 35vw;
     height: 100vh;
-    background-color: var(--main-darken-color-theme);
+    background-color: var(--third-color-theme);
     box-shadow: 4px 0px 5px 2px var(--main-lighten-color-theme);
     border-right: 2px solid rgba(255, 255, 255, 0.09);
 }

@@ -20,6 +20,7 @@ import uploadPath from './helpers/uploadPath.js'
 const app = express()
 const server = createServer(app)
 const io = new Server(server)
+const connectionsUID = {}
 
 config()
 !existsSync(uploadPath) && await mkdir(uploadPath)
@@ -32,12 +33,13 @@ app.use("/api/upload", uploadRouter)
 app.use(express.static('./src/public'))
 io.on('connection', async socket => {
     const user = await User.FindByUID(socket.handshake.auth.userID)
-    const createSystemMessage = (content) => ({ from: { name: "System", uid: "SYSTEM" }, views: [], contentType: "text", id: crypto.getRandomValues(new Int16Array(10))[0], content: content, date: new Date() })
-    const checkError = (document, message) => (!document || document?.errors?.message) && socket.emit('error', { error: message || document?.errors?.message})
-    if (!user || user.authToken != socket.handshake.auth.token)
+    if (!user || user.authToken != socket.handshake.auth.token || connectionsUID[user.uid])
         return socket.emit('error', { error: "Invalid authentication" })
+    const createSystemMessage = content => ({ from: { name: "System", uid: "SYSTEM" }, views: [], contentType: "text", id: crypto.getRandomValues(new Int16Array(10))[0], content: content, date: new Date() })
+    const checkError = (document, message) => (!document || document?.errors?.message) && socket.emit('error', { error: message || document?.errors?.message})
     
     socket.data.userUID = user.uid
+    connectionsUID[user.uid] = true
     await socket.join(user.chats.map(chat => chat._id.toString()))
     await socket.join(socket.handshake.auth.userID)
     socket.emit('user', user)
@@ -45,7 +47,6 @@ io.on('connection', async socket => {
         if (packet[0] != "auth") {
             if (!user)
                 return next(new Error('No authentication provided'))
-
             if (user.authToken != socket.handshake.auth.token) 
                 return socket.disconnect()
         }
@@ -85,11 +86,13 @@ io.on('connection', async socket => {
     })
 
     socket.on('group', async data => {
-        const systemMessage = createSystemMessage(`${user.name + '@' + user.uid} has ${data.action == "join" ? "joined" : data.action == "leave" ? "left" : data.action + "d"} the group`)
+        const systemMessage = createSystemMessage(`${user.name}@${user.uid} has ${data.action == "join" ? "joined" : data.action == "leave" ? "left" : data.action + "d"} the group`);
+        (data.action == "leave" || data.action == "join") && io.to(data.id).emit("message", { message: systemMessage, chatID: data.id, action: "send" })
         switch (data.action) {
             case "create":
                 const newGroup = new Group({ name: data.name, description: data.description, image: data.image, owner: user.uid, users: [{ uid: user.uid, isOwner: true, isBlocked: false }] })
                 const newObjGroup = newGroup.toObject()
+                newGroup.messages.push(systemMessage)
                 user.chats.push(newObjGroup)
                 await newGroup.save()
                 await socket.join(newGroup._id.toString())
@@ -115,7 +118,6 @@ io.on('connection', async socket => {
                 user.groups.push(objGroup)
                 socket.emit("chat", { chat: objGroup, action: data.action })
                 await socket.join(data.id)
-                io.to(data.id).emit("message", { message: systemMessage, chatID: data.id, action: "send" })
                 return io.to(data.id).emit('userInChat', { userUID: user.uid, id: data.id, action: data.action })
                 
             case "leave":
@@ -123,7 +125,6 @@ io.on('connection', async socket => {
                 user.chats = user.chats.filter(chat => chat._id != data.id)
                 socket.emit("chat", { action: "leave", id: data.id })
                 await socket.leave(data.id)
-                io.to(data.id).emit("message", { message: systemMessage, chatID: data.id, action: "send" })
                 return io.to(data.id).emit('userInChat', { userUID: user.uid, id: data.id, action: data.action })
         }
     })
@@ -161,13 +162,12 @@ io.on('connection', async socket => {
                 user.invites.push(inviteObj)
                 return io.to(data.to).emit('invite', { action: "recived", invite: inviteObj })
 
-
             case "handle":
                 const handleInvite = await Invite.findOneAndDelete({ _id: data.id, "to": user.uid })
                 let group = null
                 if (checkError(handleInvite)) return
                 if (data.method == "accept") {
-                    const systemMessage = createSystemMessage(`${user.name + '@' + user.uid} has joined the group`)
+                    const systemMessage = createSystemMessage(`${user.name}@${user.uid} has joined the group`)
                     group = await Group.findOneAndUpdate({ _id: handleInvite.group.id, inviteToken: handleInvite.group.token }, { $push: { users: { name: user.name, uid: user.uid, isOwner: false, isBlocked: false }, messages: systemMessage } }, { returnDocument: "after" })
                     const chatID = group._id.toString()
                     io.to(chatID).emit('userInChat', { user: { ...user, password: undefined, email: undefined }, id: chatID, action: "join" })
@@ -199,6 +199,8 @@ io.on('connection', async socket => {
         if (checkError(chat)) return
         io.to(chat._id.toString()).emit("message", { message: data.action == "send" ? update.$push.messages : { id: data.id, ...(data.action == "view" ? { userUID: user.uid } : { date: new Date(), content: data.content, contentType: data.contentType }) }, chatID: data.chatID, action: data.action })
     })
+
+    socket.on("disconnect", reason => reason == "transport close" && delete connectionsUID[user.uid])
 
     /*socket.on('deleteUser', async () => {
         for (const groupID in users.data[user.uid].groups) {
