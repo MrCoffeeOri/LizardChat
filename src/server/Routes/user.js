@@ -9,8 +9,8 @@ export default Router()
         if (!req.body.name || req.body.name == ' ' && !req.body.password || req.body.password == ' ', !req.body.email || req.body.email == ' ')
             return res.status(400).json({ error: "User data is missing" })
 
-        if (!req.body.password.match(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/g))
-            return res.status(400).json({ error: "Minimum eight characters, at least one letter, one number and no symbols" })
+        if (!req.body.password.match(/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/g))
+            return res.status(400).json({ error: "Minimum eight characters, at least one letter, one number and one special characters" })
         
         if (await User.exists({ email: req.body.email }))
             return res.status(403).json({ error: "Email already used" })
